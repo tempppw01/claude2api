@@ -6,7 +6,7 @@ Api支持访问格式为 openai 格式
 # Claude2API
 [![Go Report Card](https://goreportcard.com/badge/github.com/yushangxiao/claude2api)](https://goreportcard.com/report/github.com/yushangxiao/claude2api)
 [![License](https://img.shields.io/github/license/yushangxiao/claude2api)](LICENSE)
-|[英文](https://github.com/yushangxiao/claude2api/edit/main/README.md)
+|[英文](https://github.com/yushangxiao/claude2api/blob/main/README.md)
 
 提醒： 只有 PRO 用户可以使用所有模型。免费用户只能使用 claude-sonnet-4-20250514
 

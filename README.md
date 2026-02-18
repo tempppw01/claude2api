@@ -1,13 +1,20 @@
 # Claude2Api
-Transform Claude's web service into an API service, supporting image recognition, file upload, streaming transmission, thing output... 
-The API supports access in the OpenAI format.
+将 Claude 网页服务转为 API 服务，支持识图、文件上传、流式传输与思考输出。  
+API 兼容 OpenAI 调用格式。
 
 [![Go Report Card](https://goreportcard.com/badge/github.com/yushangxiao/claude2api)](https://goreportcard.com/report/github.com/yushangxiao/claude2api)
 [![License](https://img.shields.io/github/license/yushangxiao/claude2api)](LICENSE)
-|[中文](https://github.com/yushangxiao/claude2api/blob/main/docs/chinses.md)
 
+**文档语言：** [中文（优先）](https://github.com/yushangxiao/claude2api/blob/main/docs/chinses.md) | [English](https://github.com/yushangxiao/claude2api/blob/main/README.md)
 
-NOTICE: ONLY PRO USER CAN USE ALL MODELS , FREE USER ONLY CAN USE claude-sonnet-4-20250514
+> 提醒：只有 PRO 用户可以使用所有模型；免费用户仅可使用 `claude-sonnet-4-20250514`。
+
+---
+
+Transform Claude's web service into an API service, supporting image recognition, file upload, streaming transmission, and thinking output.  
+The API supports OpenAI-compatible access.
+
+> NOTICE: ONLY PRO USERS CAN USE ALL MODELS. FREE USERS CAN ONLY USE `claude-sonnet-4-20250514`.
 
 ## ✨ Features
 
