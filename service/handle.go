@@ -52,6 +52,8 @@ func MoudlesHandler(c *gin.Context) {
 
 // ChatCompletionsHandler handles the chat completions endpoint
 func ChatCompletionsHandler(c *gin.Context) {
+	startTime := time.Now()
+	
 	useMirror, exist := c.Get("UseMirrorApi")
 	if exist && useMirror.(bool) {
 		MirrorChatHandler(c)
@@ -61,6 +63,7 @@ func ChatCompletionsHandler(c *gin.Context) {
 	// Parse and validate request
 	req, err := parseAndValidateRequest(c)
 	if err != nil {
+		logRequest(c, "", false, startTime, "Invalid request: "+err.Error())
 		c.JSON(http.StatusBadRequest, ErrorResponse{
 			Error: fmt.Sprintf("Invalid request: %v", err),
 		})
@@ -74,12 +77,16 @@ func ChatCompletionsHandler(c *gin.Context) {
 	// Get model or use default
 	model := getModelOrDefault(req.Model)
 	index := config.Sr.NextIndex()
+	
+	var lastError string
+	
 	// Attempt with retry mechanism
 	for i := 0; i < config.ConfigInstance.RetryCount; i++ {
 		index = (index + 1) % len(config.ConfigInstance.Sessions)
 		session, err := config.ConfigInstance.GetSessionForModel(index)
 		if err != nil {
 			logger.Error(fmt.Sprintf("Failed to get session for model %s: %v", model, err))
+			lastError = err.Error()
 			logger.Info("Retrying another session")
 			continue
 		}
@@ -91,14 +98,17 @@ func ChatCompletionsHandler(c *gin.Context) {
 		}
 		// Initialize client and process request
 		if handleChatRequest(c, session, model, processor, req.Stream) {
+			logRequest(c, model, true, startTime, "")
 			return // Success, exit the retry loop
 		}
 
 		// If we're here, the request failed - retry with another session
+		lastError = "Request failed"
 		logger.Info("Retrying another session")
 	}
 
 	logger.Error("Failed for all retries")
+	logRequest(c, model, false, startTime, "Failed after all retries: "+lastError)
 	c.JSON(http.StatusInternalServerError, ErrorResponse{
 		Error: "Failed to process request after multiple attempts"})
 }
@@ -257,4 +267,28 @@ func cleanupConversation(client *core.Client, conversationID string, retry int) 
 	}
 	// 只有当所有重试都失败后，才会执行到这里
 	logger.Error(fmt.Sprintf("Cleanup %s conversation %s failed after %d retries", client.SessionKey, conversationID, retry))
+}
+
+// logRequest logs the request to the global request logger
+func logRequest(c *gin.Context, model string, success bool, startTime time.Time, errMsg string) {
+	duration := time.Since(startTime).Milliseconds()
+	
+	statusCode := http.StatusOK
+	if !success {
+		statusCode = http.StatusInternalServerError
+	}
+	
+	log := logger.RequestLog{
+		Timestamp:   startTime,
+		Method:      c.Request.Method,
+		Path:        c.Request.URL.Path,
+		Model:       model,
+		StatusCode:  statusCode,
+		Duration:    duration,
+		Success:     success,
+		Error:       errMsg,
+		IsStreaming: c.Query("stream") == "true" || c.GetBool("stream"),
+	}
+	
+	logger.GlobalRequestLogger.LogRequest(log)
 }

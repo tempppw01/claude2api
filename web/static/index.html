@@ -19,7 +19,7 @@
         }
 
         .container {
-            max-width: 1200px;
+            max-width: 1400px;
             margin: 0 auto;
             padding: 20px;
         }
@@ -60,10 +60,20 @@
             backdrop-filter: blur(10px);
         }
 
+        .card-full {
+            grid-column: 1 / -1;
+        }
+
         .card-header {
             display: flex;
             align-items: center;
+            justify-content: space-between;
             margin-bottom: 20px;
+        }
+
+        .card-header-left {
+            display: flex;
+            align-items: center;
         }
 
         .card-icon {
@@ -81,6 +91,8 @@
         .card-icon.models { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
         .card-icon.sessions { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
         .card-icon.config { background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); }
+        .card-icon.stats { background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); }
+        .card-icon.logs { background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%); }
 
         .card-title {
             font-size: 1.2rem;
@@ -90,13 +102,15 @@
         .status-indicator {
             display: flex;
             align-items: center;
-            gap: 10px;
+            justify-content: center;
+            padding: 20px;
         }
 
         .status-dot {
             width: 12px;
             height: 12px;
             border-radius: 50%;
+            margin-right: 10px;
             animation: pulse 2s infinite;
         }
 
@@ -109,12 +123,22 @@
         }
 
         .status-text {
-            font-size: 1.5rem;
-            font-weight: 600;
+            font-size: 1.1rem;
+            font-weight: 500;
         }
 
         .status-text.online { color: #4ade80; }
         .status-text.offline { color: #f87171; }
+
+        .session-count {
+            font-size: 3rem;
+            font-weight: 700;
+            text-align: center;
+            background: linear-gradient(90deg, #4facfe 0%, #00f2fe 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
 
         .model-list {
             display: flex;
@@ -123,27 +147,11 @@
         }
 
         .model-tag {
-            background: rgba(102, 126, 234, 0.2);
-            border: 1px solid rgba(102, 126, 234, 0.3);
+            background: rgba(255,255,255,0.1);
             padding: 6px 12px;
             border-radius: 20px;
             font-size: 0.85rem;
-            color: #a5b4fc;
-        }
-
-        .model-tag.free {
-            background: rgba(74, 222, 128, 0.2);
-            border-color: rgba(74, 222, 128, 0.3);
-            color: #86efac;
-        }
-
-        .session-count {
-            font-size: 3rem;
-            font-weight: 700;
-            background: linear-gradient(90deg, #4facfe 0%, #00f2fe 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
+            color: #e0e0e0;
         }
 
         .config-list {
@@ -154,7 +162,7 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 10px 0;
+            padding: 12px 0;
             border-bottom: 1px solid rgba(255,255,255,0.05);
         }
 
@@ -164,6 +172,7 @@
 
         .config-key {
             color: #888;
+            font-size: 0.9rem;
         }
 
         .config-value {
@@ -171,61 +180,167 @@
             color: #e0e0e0;
         }
 
-        .config-value.true { color: #4ade80; }
-        .config-value.false { color: #f87171; }
+        .config-value.editable {
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 6px;
+            padding: 4px 8px;
+            width: 120px;
+            text-align: right;
+            color: #e0e0e0;
+            font-size: 0.9rem;
+        }
 
-        .config-editable {
+        .config-value.editable:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .config-toggle {
             display: flex;
             align-items: center;
             gap: 10px;
         }
 
-        .config-input {
-            width: 100px;
-            padding: 6px 10px;
-            border-radius: 6px;
-            border: 1px solid rgba(255,255,255,0.2);
-            background: rgba(0,0,0,0.3);
-            color: #e0e0e0;
-            font-size: 0.9rem;
-            text-align: right;
-        }
-
-        .config-input:focus {
-            outline: none;
-            border-color: #667eea;
-        }
-
-        .config-save-btn {
-            padding: 6px 12px;
-            border-radius: 6px;
-            border: none;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            font-size: 0.8rem;
+        .toggle-switch {
+            position: relative;
+            width: 50px;
+            height: 26px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 13px;
             cursor: pointer;
-            transition: transform 0.2s, opacity 0.2s;
+            transition: background 0.3s;
         }
 
-        .config-save-btn:hover {
-            transform: scale(1.05);
+        .toggle-switch.active {
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
         }
 
-        .config-save-btn:disabled {
-            opacity: 0.5;
+        .toggle-switch::after {
+            content: '';
+            position: absolute;
+            width: 22px;
+            height: 22px;
+            background: white;
+            border-radius: 50%;
+            top: 2px;
+            left: 2px;
+            transition: transform 0.3s;
+        }
+
+        .toggle-switch.active::after {
+            transform: translateX(24px);
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-success {
+            background: linear-gradient(90deg, #43e97b 0%, #38f9d7 100%);
+            color: #1a1a2e;
+        }
+
+        .btn-danger {
+            background: linear-gradient(90deg, #f87171 0%, #ef4444 100%);
+            color: white;
+        }
+
+        .btn-secondary {
+            background: rgba(255,255,255,0.1);
+            color: #e0e0e0;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
             cursor: not-allowed;
         }
 
-        .config-save-btn.saving {
-            opacity: 0.7;
+        .btn.saving {
+            background: #888;
         }
 
-        .config-save-btn.success {
-            background: #4ade80;
+        .btn.success {
+            background: linear-gradient(90deg, #43e97b 0%, #38f9d7 100%);
+            color: #1a1a2e;
         }
 
-        .config-save-btn.error {
-            background: #f87171;
+        .btn.error {
+            background: linear-gradient(90deg, #f87171 0%, #ef4444 100%);
+            color: white;
+        }
+
+        .session-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .session-table th,
+        .session-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .session-table th {
+            color: #888;
+            font-weight: 500;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+        }
+
+        .session-table td {
+            font-size: 0.9rem;
+        }
+
+        .empty-state {
+            text-align: center;
+            color: #888;
+            padding: 40px;
+        }
+
+        .add-session-form {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+
+        .add-session-form input {
+            flex: 1;
+            min-width: 200px;
+            padding: 12px 16px;
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 8px;
+            background: rgba(255,255,255,0.05);
+            color: #e0e0e0;
+            font-size: 0.9rem;
+        }
+
+        .add-session-form input::placeholder {
+            color: #666;
+        }
+
+        .add-session-form input:focus {
+            outline: none;
+            border-color: #667eea;
         }
 
         .api-section {
@@ -240,91 +355,223 @@
         }
 
         .api-title {
-            font-size: 1.3rem;
+            font-size: 1.2rem;
             font-weight: 600;
             margin-bottom: 20px;
         }
 
         .api-endpoint {
-            background: rgba(0,0,0,0.3);
+            display: flex;
+            align-items: center;
+            padding: 12px;
+            background: rgba(0,0,0,0.2);
             border-radius: 8px;
-            padding: 16px;
-            margin-bottom: 12px;
-            font-family: 'Monaco', 'Menlo', monospace;
-            font-size: 0.9rem;
+            margin-bottom: 10px;
         }
 
         .api-method {
-            display: inline-block;
-            padding: 4px 8px;
+            padding: 4px 10px;
             border-radius: 4px;
-            font-weight: 600;
-            margin-right: 10px;
             font-size: 0.8rem;
+            font-weight: 600;
+            margin-right: 12px;
         }
 
-        .api-method.get { background: #22c55e; }
-        .api-method.post { background: #3b82f6; }
+        .api-method.get {
+            background: #22c55e;
+            color: white;
+        }
+
+        .api-method.post {
+            background: #3b82f6;
+            color: white;
+        }
+
+        .api-method.delete {
+            background: #ef4444;
+            color: white;
+        }
 
         .api-path {
-            color: #a5b4fc;
+            font-family: 'Monaco', 'Menlo', monospace;
+            color: #e0e0e0;
         }
 
         .api-desc {
+            margin-left: auto;
             color: #888;
             font-size: 0.85rem;
-            margin-top: 8px;
         }
 
-        .refresh-btn {
-            position: fixed;
-            bottom: 30px;
-            right: 30px;
-            width: 56px;
-            height: 56px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border: none;
-            color: white;
-            font-size: 24px;
-            cursor: pointer;
-            box-shadow: 0 4px 20px rgba(102, 126, 234, 0.4);
-            transition: transform 0.3s, box-shadow 0.3s;
+        /* Stats styles */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 16px;
         }
 
-        .refresh-btn:hover {
-            transform: scale(1.1);
-            box-shadow: 0 6px 30px rgba(102, 126, 234, 0.6);
+        .stat-item {
+            text-align: center;
+            padding: 16px;
+            background: rgba(0,0,0,0.2);
+            border-radius: 12px;
         }
 
-        .loading {
-            opacity: 0.5;
-            pointer-events: none;
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
         }
 
-        @media (max-width: 768px) {
-            .header h1 {
-                font-size: 1.8rem;
-            }
-            
-            .container {
-                padding: 15px;
-            }
+        .stat-label {
+            font-size: 0.85rem;
+            color: #888;
+            margin-top: 4px;
+        }
+
+        .stat-value.success { background: linear-gradient(90deg, #43e97b 0%, #38f9d7 100%); -webkit-background-clip: text; background-clip: text; }
+        .stat-value.error { background: linear-gradient(90deg, #f87171 0%, #ef4444 100%); -webkit-background-clip: text; background-clip: text; }
+
+        /* Logs styles */
+        .logs-container {
+            max-height: 400px;
+            overflow-y: auto;
+            background: rgba(0,0,0,0.2);
+            border-radius: 8px;
+        }
+
+        .log-item {
+            display: flex;
+            align-items: center;
+            padding: 10px 16px;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            font-size: 0.85rem;
+        }
+
+        .log-item:last-child {
+            border-bottom: none;
+        }
+
+        .log-time {
+            color: #888;
+            margin-right: 12px;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 0.8rem;
+        }
+
+        .log-status {
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            margin-right: 12px;
+        }
+
+        .log-status.success {
+            background: rgba(67, 233, 123, 0.2);
+            color: #43e97b;
+        }
+
+        .log-status.error {
+            background: rgba(248, 113, 113, 0.2);
+            color: #f87171;
+        }
+
+        .log-model {
+            color: #667eea;
+            margin-right: 12px;
+            min-width: 180px;
+        }
+
+        .log-duration {
+            color: #888;
+            margin-left: auto;
+        }
+
+        .logs-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .logs-empty {
+            text-align: center;
+            color: #888;
+            padding: 40px;
+        }
+
+        /* Config section styles */
+        .config-section {
+            margin-top: 16px;
+        }
+
+        .config-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .config-row:last-child {
+            border-bottom: none;
+        }
+
+        .config-label {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .config-label-text {
+            color: #e0e0e0;
+            font-weight: 500;
+        }
+
+        .config-label-desc {
+            color: #666;
+            font-size: 0.8rem;
+            margin-top: 2px;
+        }
+
+        .config-input {
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 6px;
+            padding: 8px 12px;
+            color: #e0e0e0;
+            font-size: 0.9rem;
+            width: 200px;
+        }
+
+        .config-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .save-all-btn {
+            margin-top: 16px;
+            width: 100%;
         }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>🚀 Claude2API 管理面板</h1>
+            <h1>🚀 Claude2API</h1>
             <p>将 Claude 网页服务转为 API 服务</p>
         </div>
 
         <div class="grid">
+            <!-- Status Card -->
             <div class="card">
                 <div class="card-header">
-                    <div class="card-icon status">📊</div>
-                    <div class="card-title">服务状态</div>
+                    <div class="card-header-left">
+                        <div class="card-icon status">📊</div>
+                        <div class="card-title">服务状态</div>
+                    </div>
                 </div>
                 <div class="status-indicator">
                     <div class="status-dot online" id="statusDot"></div>
@@ -332,34 +579,153 @@
                 </div>
             </div>
 
+            <!-- Session Count Card -->
             <div class="card">
                 <div class="card-header">
-                    <div class="card-icon sessions">🔑</div>
-                    <div class="card-title">Session 数量</div>
+                    <div class="card-header-left">
+                        <div class="card-icon sessions">🔑</div>
+                        <div class="card-title">Session 数量</div>
+                    </div>
                 </div>
                 <div class="session-count" id="sessionCount">-</div>
             </div>
 
+            <!-- Stats Card -->
             <div class="card">
                 <div class="card-header">
-                    <div class="card-icon models">🤖</div>
-                    <div class="card-title">可用模型</div>
+                    <div class="card-header-left">
+                        <div class="card-icon stats">📈</div>
+                        <div class="card-title">请求统计</div>
+                    </div>
+                </div>
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <div class="stat-value" id="totalRequests">0</div>
+                        <div class="stat-label">总请求</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value success" id="successRate">0%</div>
+                        <div class="stat-label">成功率</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="rpm">0</div>
+                        <div class="stat-label">RPM</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Models Card -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-header-left">
+                        <div class="card-icon models">🤖</div>
+                        <div class="card-title">可用模型</div>
+                    </div>
                 </div>
                 <div class="model-list" id="modelList">
                     <span style="color: #888;">加载中...</span>
                 </div>
             </div>
 
-            <div class="card">
+            <!-- Config Card -->
+            <div class="card card-full">
                 <div class="card-header">
-                    <div class="card-icon config">⚙️</div>
-                    <div class="card-title">配置信息</div>
+                    <div class="card-header-left">
+                        <div class="card-icon config">⚙️</div>
+                        <div class="card-title">配置设置</div>
+                    </div>
                 </div>
-                <ul class="config-list" id="configList">
-                    <li class="config-item">
-                        <span class="config-key">加载中...</span>
-                    </li>
-                </ul>
+                <div class="config-section">
+                    <div class="config-row">
+                        <div class="config-label">
+                            <span class="config-label-text">自动删除对话</span>
+                            <span class="config-label-desc">请求完成后自动删除 Claude 对话</span>
+                        </div>
+                        <div class="toggle-switch active" id="toggleChatDelete" onclick="toggleConfig('chat_delete')"></div>
+                    </div>
+                    <div class="config-row">
+                        <div class="config-label">
+                            <span class="config-label-text">禁用角色前缀</span>
+                            <span class="config-label-desc">不添加 User/Assistant 前缀</span>
+                        </div>
+                        <div class="toggle-switch" id="toggleNoRolePrefix" onclick="toggleConfig('no_role_prefix')"></div>
+                    </div>
+                    <div class="config-row">
+                        <div class="config-label">
+                            <span class="config-label-text">禁用 Artifacts</span>
+                            <span class="config-label-desc">在提示词中禁用 Artifacts 功能</span>
+                        </div>
+                        <div class="toggle-switch" id="toggleDisableArtifacts" onclick="toggleConfig('prompt_disable_artifacts')"></div>
+                    </div>
+                    <div class="config-row">
+                        <div class="config-label">
+                            <span class="config-label-text">启用镜像 API</span>
+                            <span class="config-label-desc">允许通过自定义前缀访问 API</span>
+                        </div>
+                        <div class="toggle-switch" id="toggleMirrorApi" onclick="toggleConfig('enable_mirror_api')"></div>
+                    </div>
+                    <div class="config-row">
+                        <div class="config-label">
+                            <span class="config-label-text">镜像 API 前缀</span>
+                            <span class="config-label-desc">镜像 API 的 URL 前缀</span>
+                        </div>
+                        <input type="text" class="config-input" id="mirrorApiPrefix" placeholder="/mirror">
+                    </div>
+                    <div class="config-row">
+                        <div class="config-label">
+                            <span class="config-label-text">最大上下文长度</span>
+                            <span class="config-label-desc">超过此长度将使用文件存储上下文</span>
+                        </div>
+                        <input type="number" class="config-input" id="maxChatHistoryLength" placeholder="10000">
+                    </div>
+                    <button class="btn btn-primary save-all-btn" onclick="saveAllConfig()">保存所有配置</button>
+                </div>
+            </div>
+
+            <!-- Session Management Card -->
+            <div class="card card-full">
+                <div class="card-header">
+                    <div class="card-header-left">
+                        <div class="card-icon sessions">🔐</div>
+                        <div class="card-title">Session 管理</div>
+                    </div>
+                </div>
+                <div id="sessionTableContainer">
+                    <table class="session-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 50px;">#</th>
+                                <th>Session Key</th>
+                                <th>Org ID</th>
+                                <th style="width: 180px;">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="sessionTableBody">
+                            <tr>
+                                <td colspan="4" class="empty-state">加载中...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="add-session-form">
+                    <input type="text" id="newSessionKey" placeholder="输入新的 Session Key (sk-ant-sid...)">
+                    <input type="text" id="newOrgId" placeholder="Org ID (可选)">
+                    <button class="btn btn-primary" onclick="addSession()">添加 Session</button>
+                </div>
+            </div>
+
+            <!-- Request Logs Card -->
+            <div class="card card-full">
+                <div class="card-header">
+                    <div class="card-header-left">
+                        <div class="card-icon logs">📋</div>
+                        <div class="card-title">请求日志</div>
+                    </div>
+                    <button class="btn btn-secondary" onclick="clearLogs()">清空日志</button>
+                </div>
+                <div class="logs-container" id="logsContainer">
+                    <div class="logs-empty">暂无请求记录</div>
+                </div>
             </div>
         </div>
 
@@ -381,130 +747,168 @@
 
                 <div class="api-endpoint">
                     <span class="api-method get">GET</span>
-                    <span class="api-path">/health</span>
-                    <div class="api-desc">健康检查接口</div>
+                    <span class="api-path">/admin-api/status</span>
+                    <div class="api-desc">获取服务状态</div>
                 </div>
 
                 <div class="api-endpoint">
                     <span class="api-method get">GET</span>
-                    <span class="api-path">/admin-api/status</span>
-                    <div class="api-desc">获取服务状态信息</div>
+                    <span class="api-path">/admin-api/stats</span>
+                    <div class="api-desc">获取请求统计</div>
+                </div>
+
+                <div class="api-endpoint">
+                    <span class="api-method get">GET</span>
+                    <span class="api-path">/admin-api/logs</span>
+                    <div class="api-desc">获取请求日志</div>
                 </div>
             </div>
         </div>
     </div>
 
-    <button class="refresh-btn" onclick="loadData()" title="刷新数据">🔄</button>
-
     <script>
-        const freeModels = ['claude-sonnet-4-20250514', 'claude-sonnet-4-6-20260217'];
-        let currentConfig = null;
+        let currentConfig = {};
+        let sessions = [];
 
         async function loadData() {
             try {
                 const response = await fetch('/admin-api/status');
-                if (!response.ok) throw new Error('Failed to fetch');
-                
                 const data = await response.json();
+                
+                // Update session count
+                document.getElementById('sessionCount').textContent = data.session_count;
+                
+                // Update model list
+                const modelList = document.getElementById('modelList');
+                modelList.innerHTML = data.models.map(m => 
+                    `<span class="model-tag">${m}</span>`
+                ).join('');
+                
+                // Update config
                 currentConfig = data.config;
-                updateUI(data);
+                updateConfigUI();
+                
+                // Update sessions
+                sessions = data.sessions;
+                updateSessionTable();
+                
             } catch (error) {
-                console.error('Error loading data:', error);
-                document.getElementById('statusDot').classList.remove('online');
-                document.getElementById('statusDot').classList.add('offline');
-                document.getElementById('statusText').classList.remove('online');
-                document.getElementById('statusText').classList.add('offline');
-                document.getElementById('statusText').textContent = '离线';
+                console.error('Failed to load data:', error);
             }
         }
 
-        function updateUI(data) {
-            // Update session count
-            document.getElementById('sessionCount').textContent = data.session_count || 0;
-
-            // Update model list
-            const modelList = document.getElementById('modelList');
-            if (data.models && data.models.length > 0) {
-                modelList.innerHTML = data.models.map(model => {
-                    const isFree = freeModels.includes(model);
-                    return `<span class="model-tag ${isFree ? 'free' : ''}">${model}${isFree ? ' (免费)' : ''}</span>`;
-                }).join('');
-            } else {
-                modelList.innerHTML = '<span style="color: #888;">暂无模型</span>';
+        async function loadStats() {
+            try {
+                const response = await fetch('/admin-api/stats');
+                const data = await response.json();
+                
+                document.getElementById('totalRequests').textContent = data.total_requests;
+                document.getElementById('successRate').textContent = data.success_rate.toFixed(1) + '%';
+                document.getElementById('rpm').textContent = data.rpm.toFixed(1);
+            } catch (error) {
+                console.error('Failed to load stats:', error);
             }
+        }
 
-            // Update config list
-            const configList = document.getElementById('configList');
-            if (data.config) {
-                const configItems = [
-                    { key: '服务地址', value: data.config.address, editable: false },
-                    { key: '代理设置', value: data.config.proxy || '未设置', editable: false },
-                    { key: '自动删除对话', value: data.config.chat_delete, editable: false },
-                    { key: '最大上下文长度', value: data.config.max_chat_history_length, editable: true, field: 'max_chat_history_length' },
-                    { key: '禁用角色前缀', value: data.config.no_role_prefix, editable: false },
-                    { key: '禁用Artifacts', value: data.config.prompt_disable_artifacts, editable: false },
-                    { key: '镜像API', value: data.config.enable_mirror_api, editable: false },
-                ];
-
-                configList.innerHTML = configItems.map(item => {
-                    let valueClass = '';
-                    let displayValue = item.value;
+        async function loadLogs() {
+            try {
+                const response = await fetch('/admin-api/logs?limit=50');
+                const data = await response.json();
+                
+                const container = document.getElementById('logsContainer');
+                
+                if (data.logs.length === 0) {
+                    container.innerHTML = '<div class="logs-empty">暂无请求记录</div>';
+                    return;
+                }
+                
+                container.innerHTML = data.logs.map(log => {
+                    const time = new Date(log.timestamp).toLocaleTimeString();
+                    const statusClass = log.success ? 'success' : 'error';
+                    const statusText = log.success ? '成功' : '失败';
                     
-                    if (typeof item.value === 'boolean') {
-                        valueClass = item.value ? 'true' : 'false';
-                        displayValue = item.value ? '是' : '否';
-                    }
-
-                    if (item.editable) {
-                        return `
-                            <li class="config-item">
-                                <span class="config-key">${item.key}</span>
-                                <div class="config-editable">
-                                    <input type="number" class="config-input" id="input-${item.field}" value="${item.value}" min="1000">
-                                    <button class="config-save-btn" onclick="saveConfig('${item.field}')">保存</button>
-                                </div>
-                            </li>
-                        `;
-                    }
-
                     return `
-                        <li class="config-item">
-                            <span class="config-key">${item.key}</span>
-                            <span class="config-value ${valueClass}">${displayValue}</span>
-                        </li>
+                        <div class="log-item">
+                            <span class="log-time">${time}</span>
+                            <span class="log-status ${statusClass}">${statusText}</span>
+                            <span class="log-model">${log.model || '-'}</span>
+                            <span class="log-duration">${log.duration_ms}ms</span>
+                        </div>
                     `;
                 }).join('');
+            } catch (error) {
+                console.error('Failed to load logs:', error);
             }
         }
 
-        async function saveConfig(field) {
-            const input = document.getElementById(`input-${field}`);
-            const btn = input.nextElementSibling;
-            const value = parseInt(input.value);
+        function updateConfigUI() {
+            // Update toggles
+            document.getElementById('toggleChatDelete').classList.toggle('active', currentConfig.chat_delete !== false);
+            document.getElementById('toggleNoRolePrefix').classList.toggle('active', currentConfig.no_role_prefix === true);
+            document.getElementById('toggleDisableArtifacts').classList.toggle('active', currentConfig.prompt_disable_artifacts === true);
+            document.getElementById('toggleMirrorApi').classList.toggle('active', currentConfig.enable_mirror_api === true);
+            
+            // Update inputs
+            document.getElementById('mirrorApiPrefix').value = currentConfig.mirror_api_prefix || '';
+            document.getElementById('maxChatHistoryLength').value = currentConfig.max_chat_history_length || 10000;
+        }
 
-            if (isNaN(value) || value < 1000) {
-                btn.textContent = '最小1000';
-                btn.classList.add('error');
-                setTimeout(() => {
-                    btn.textContent = '保存';
-                    btn.classList.remove('error');
-                }, 2000);
+        function updateSessionTable() {
+            const tbody = document.getElementById('sessionTableBody');
+            
+            if (sessions.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" class="empty-state">暂无 Session</td></tr>';
                 return;
             }
+            
+            tbody.innerHTML = sessions.map((session, index) => `
+                <tr>
+                    <td>${index + 1}</td>
+                    <td><code>${session.session_key}</code></td>
+                    <td>${session.org_id || '-'}</td>
+                    <td>
+                        <button class="btn btn-success" onclick="testSession(${index})" style="margin-right: 8px; padding: 6px 12px;">测试</button>
+                        <button class="btn btn-danger" onclick="removeSession(${index})" style="padding: 6px 12px;">删除</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
 
+        async function toggleConfig(key) {
+            const toggleMap = {
+                'chat_delete': 'toggleChatDelete',
+                'no_role_prefix': 'toggleNoRolePrefix',
+                'prompt_disable_artifacts': 'toggleDisableArtifacts',
+                'enable_mirror_api': 'toggleMirrorApi'
+            };
+            
+            const element = document.getElementById(toggleMap[key]);
+            const isActive = element.classList.toggle('active');
+            
+            // Update local config
+            currentConfig[key] = isActive;
+        }
+
+        async function saveAllConfig() {
+            const btn = document.querySelector('.save-all-btn');
             btn.textContent = '保存中...';
-            btn.classList.add('saving');
             btn.disabled = true;
-
+            btn.classList.add('saving');
+            
+            const configData = {
+                chat_delete: document.getElementById('toggleChatDelete').classList.contains('active'),
+                no_role_prefix: document.getElementById('toggleNoRolePrefix').classList.contains('active'),
+                prompt_disable_artifacts: document.getElementById('toggleDisableArtifacts').classList.contains('active'),
+                enable_mirror_api: document.getElementById('toggleMirrorApi').classList.contains('active'),
+                mirror_api_prefix: document.getElementById('mirrorApiPrefix').value,
+                max_chat_history_length: parseInt(document.getElementById('maxChatHistoryLength').value) || 10000
+            };
+            
             try {
                 const response = await fetch('/admin-api/config', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        max_chat_history_length: value
-                    })
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(configData)
                 });
 
                 const result = await response.json();
@@ -514,7 +918,7 @@
                     btn.classList.remove('saving');
                     btn.classList.add('success');
                     setTimeout(() => {
-                        btn.textContent = '保存';
+                        btn.textContent = '保存所有配置';
                         btn.classList.remove('success');
                         btn.disabled = false;
                     }, 2000);
@@ -526,18 +930,148 @@
                 btn.classList.remove('saving');
                 btn.classList.add('error');
                 setTimeout(() => {
-                    btn.textContent = '保存';
+                    btn.textContent = '保存所有配置';
                     btn.classList.remove('error');
                     btn.disabled = false;
                 }, 2000);
             }
         }
 
+        async function addSession() {
+            const keyInput = document.getElementById('newSessionKey');
+            const orgInput = document.getElementById('newOrgId');
+            const sessionKey = keyInput.value.trim();
+            const orgId = orgInput.value.trim();
+
+            if (!sessionKey) {
+                alert('请输入 Session Key');
+                return;
+            }
+
+            try {
+                const response = await fetch('/admin-api/session', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ session_key: sessionKey, org_id: orgId })
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    keyInput.value = '';
+                    orgInput.value = '';
+                    loadData();
+                } else {
+                    alert(result.error || '添加失败');
+                }
+            } catch (error) {
+                alert('添加失败: ' + error.message);
+            }
+        }
+
+        async function removeSession(index) {
+            if (!confirm('确定要删除这个 Session 吗？')) return;
+
+            try {
+                const response = await fetch(`/admin-api/session/${index}`, {
+                    method: 'DELETE'
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    loadData();
+                } else {
+                    alert(result.error || '删除失败');
+                }
+            } catch (error) {
+                alert('删除失败: ' + error.message);
+            }
+        }
+
+        async function testSession(index) {
+            const tbody = document.getElementById('sessionTableBody');
+            const row = tbody.rows[index];
+            const testBtn = row.querySelector('.btn-success');
+            const originalText = testBtn.textContent;
+            
+            testBtn.textContent = '测试中...';
+            testBtn.disabled = true;
+
+            try {
+                const response = await fetch('/admin-api/session/test', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ index: index })
+                });
+
+                const result = await response.json();
+
+                if (result.status === 'ok') {
+                    testBtn.textContent = '正常';
+                    testBtn.classList.add('success');
+                    // Update org ID if returned
+                    if (result.org_id && sessions[index]) {
+                        sessions[index].org_id = result.org_id;
+                        updateSessionTable();
+                    }
+                    alert('测试成功！Session 有效' + (result.org_id ? '\nOrg ID: ' + result.org_id : ''));
+                } else {
+                    testBtn.textContent = '异常';
+                    testBtn.classList.add('error');
+                    alert('测试失败: ' + result.message);
+                }
+
+                setTimeout(() => {
+                    testBtn.textContent = originalText;
+                    testBtn.classList.remove('success', 'error');
+                    testBtn.disabled = false;
+                }, 2000);
+
+            } catch (error) {
+                testBtn.textContent = '错误';
+                testBtn.classList.add('error');
+                alert('测试失败: ' + error.message);
+                setTimeout(() => {
+                    testBtn.textContent = originalText;
+                    testBtn.classList.remove('error');
+                    testBtn.disabled = false;
+                }, 2000);
+            }
+        }
+
+        async function clearLogs() {
+            if (!confirm('确定要清空所有日志吗？')) return;
+            
+            try {
+                const response = await fetch('/admin-api/logs', {
+                    method: 'DELETE'
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    loadLogs();
+                    loadStats();
+                } else {
+                    alert(result.error || '清空失败');
+                }
+            } catch (error) {
+                alert('清空失败: ' + error.message);
+            }
+        }
+
         // Load data on page load
         loadData();
+        loadStats();
+        loadLogs();
 
         // Auto refresh every 30 seconds
-        setInterval(loadData, 30000);
+        setInterval(() => {
+            loadData();
+            loadStats();
+            loadLogs();
+        }, 30000);
     </script>
 </body>
 </html>

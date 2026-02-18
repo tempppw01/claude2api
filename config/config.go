@@ -197,19 +197,82 @@ func loadConfigFromEnv() *Config {
 func LoadConfig() *Config {
 	// 检查配置文件是否存在
 	exists, configPath := configFileExists()
+	
+	var config *Config
 	if exists {
 		logger.Info(fmt.Sprintf("Found config file at %s", configPath))
-		config, err := loadConfigFromYAML(configPath)
-		if err == nil {
+		var err error
+		config, err = loadConfigFromYAML(configPath)
+		if err != nil {
+			logger.Error(fmt.Sprintf("Failed to load config from YAML: %v, falling back to environment variables", err))
+			config = loadConfigFromEnv()
+		} else {
 			logger.Info("Successfully loaded configuration from YAML file")
-			return config
 		}
-		logger.Error(fmt.Sprintf("Failed to load config from YAML: %v, falling back to environment variables", err))
+	} else {
+		// 如果配置文件不存在，从环境变量加载
+		logger.Info("Loading configuration from environment variables")
+		config = loadConfigFromEnv()
 	}
 
-	// 如果配置文件不存在或加载失败，从环境变量加载
-	logger.Info("Loading configuration from environment variables")
-	return loadConfigFromEnv()
+	// 合并环境变量中的 Session（去重）
+	envSessions := parseSessionsFromEnv()
+	if len(envSessions) > 0 {
+		config = mergeSessions(config, envSessions)
+	}
+
+	return config
+}
+
+// parseSessionsFromEnv 从环境变量解析 Session
+func parseSessionsFromEnv() []SessionInfo {
+	_, sessions := parseSessionEnv(os.Getenv("SESSIONS"))
+	return sessions
+}
+
+// mergeSessions 合并 YAML 配置和环境变量中的 Session，自动去重
+func mergeSessions(config *Config, envSessions []SessionInfo) *Config {
+	if len(envSessions) == 0 {
+		return config
+	}
+
+	// 创建 SessionKey 到 SessionInfo 的映射，用于去重
+	sessionMap := make(map[string]SessionInfo)
+
+	// 先添加 YAML 中的 Session
+	for _, s := range config.Sessions {
+		sessionMap[s.SessionKey] = s
+	}
+
+	// 再添加环境变量中的 Session（会覆盖 YAML 中相同 SessionKey 的记录）
+	envAddedCount := 0
+	for _, s := range envSessions {
+		if _, exists := sessionMap[s.SessionKey]; !exists {
+			envAddedCount++
+		}
+		// 环境变量的 Session 优先级更高（覆盖 YAML 中的）
+		sessionMap[s.SessionKey] = s
+	}
+
+	// 转换回切片
+	mergedSessions := make([]SessionInfo, 0, len(sessionMap))
+	for _, s := range sessionMap {
+		mergedSessions = append(mergedSessions, s)
+	}
+
+	config.Sessions = mergedSessions
+	
+	// 更新重试次数
+	config.RetryCount = len(mergedSessions)
+	if config.RetryCount > 5 {
+		config.RetryCount = 5
+	}
+
+	if envAddedCount > 0 {
+		logger.Info(fmt.Sprintf("Merged %d sessions from environment variables", envAddedCount))
+	}
+
+	return config
 }
 
 var ConfigInstance *Config
