@@ -16,12 +16,12 @@ COPY . .
 # Build the application  
 RUN CGO_ENABLED=0 GOOS=linux go build -o main ./main.go  
 
-# Create a minimal production image  
-FROM alpine:latest  
+# Create a minimal production image
+FROM alpine:latest
 
-# Create app directory and set permissions  
-WORKDIR /app  
-COPY --from=build /app/main .  
+# Create app directory and set permissions
+WORKDIR /app
+COPY --from=build /app/main .
 
-# Command to run the executable  
-CMD ["./main"]  
+# Command to run the executable
+CMD ["./main"]

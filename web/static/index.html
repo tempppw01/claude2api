@@ -56,6 +56,7 @@
             border-radius: 16px;
             padding: 24px;
             border: 1px solid rgba(255,255,255,0.1);
+            -webkit-backdrop-filter: blur(10px);
             backdrop-filter: blur(10px);
         }
 
@@ -152,6 +153,7 @@
         .config-item {
             display: flex;
             justify-content: space-between;
+            align-items: center;
             padding: 10px 0;
             border-bottom: 1px solid rgba(255,255,255,0.05);
         }
@@ -171,6 +173,60 @@
 
         .config-value.true { color: #4ade80; }
         .config-value.false { color: #f87171; }
+
+        .config-editable {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .config-input {
+            width: 100px;
+            padding: 6px 10px;
+            border-radius: 6px;
+            border: 1px solid rgba(255,255,255,0.2);
+            background: rgba(0,0,0,0.3);
+            color: #e0e0e0;
+            font-size: 0.9rem;
+            text-align: right;
+        }
+
+        .config-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .config-save-btn {
+            padding: 6px 12px;
+            border-radius: 6px;
+            border: none;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: transform 0.2s, opacity 0.2s;
+        }
+
+        .config-save-btn:hover {
+            transform: scale(1.05);
+        }
+
+        .config-save-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .config-save-btn.saving {
+            opacity: 0.7;
+        }
+
+        .config-save-btn.success {
+            background: #4ade80;
+        }
+
+        .config-save-btn.error {
+            background: #f87171;
+        }
 
         .api-section {
             margin-top: 30px;
@@ -218,18 +274,6 @@
             color: #888;
             font-size: 0.85rem;
             margin-top: 8px;
-        }
-
-        .footer {
-            text-align: center;
-            padding: 30px 0;
-            color: #666;
-            font-size: 0.9rem;
-        }
-
-        .footer a {
-            color: #667eea;
-            text-decoration: none;
         }
 
         .refresh-btn {
@@ -343,14 +387,10 @@
 
                 <div class="api-endpoint">
                     <span class="api-method get">GET</span>
-                    <span class="api-path">/admin/status</span>
+                    <span class="api-path">/admin-api/status</span>
                     <div class="api-desc">获取服务状态信息</div>
                 </div>
             </div>
-        </div>
-
-        <div class="footer">
-            Made with ❤️ by <a href="https://github.com/yushangxiao/claude2api" target="_blank">yushangxiao</a>
         </div>
     </div>
 
@@ -358,13 +398,15 @@
 
     <script>
         const freeModels = ['claude-sonnet-4-20250514', 'claude-sonnet-4-6-20260217'];
+        let currentConfig = null;
 
         async function loadData() {
             try {
-                const response = await fetch('/admin/status');
+                const response = await fetch('/admin-api/status');
                 if (!response.ok) throw new Error('Failed to fetch');
                 
                 const data = await response.json();
+                currentConfig = data.config;
                 updateUI(data);
             } catch (error) {
                 console.error('Error loading data:', error);
@@ -395,13 +437,13 @@
             const configList = document.getElementById('configList');
             if (data.config) {
                 const configItems = [
-                    { key: '服务地址', value: data.config.address },
-                    { key: '代理设置', value: data.config.proxy || '未设置' },
-                    { key: '自动删除对话', value: data.config.chat_delete },
-                    { key: '最大上下文长度', value: data.config.max_chat_history_length },
-                    { key: '禁用角色前缀', value: data.config.no_role_prefix },
-                    { key: '禁用Artifacts', value: data.config.prompt_disable_artifacts },
-                    { key: '镜像API', value: data.config.enable_mirror_api },
+                    { key: '服务地址', value: data.config.address, editable: false },
+                    { key: '代理设置', value: data.config.proxy || '未设置', editable: false },
+                    { key: '自动删除对话', value: data.config.chat_delete, editable: false },
+                    { key: '最大上下文长度', value: data.config.max_chat_history_length, editable: true, field: 'max_chat_history_length' },
+                    { key: '禁用角色前缀', value: data.config.no_role_prefix, editable: false },
+                    { key: '禁用Artifacts', value: data.config.prompt_disable_artifacts, editable: false },
+                    { key: '镜像API', value: data.config.enable_mirror_api, editable: false },
                 ];
 
                 configList.innerHTML = configItems.map(item => {
@@ -413,6 +455,18 @@
                         displayValue = item.value ? '是' : '否';
                     }
 
+                    if (item.editable) {
+                        return `
+                            <li class="config-item">
+                                <span class="config-key">${item.key}</span>
+                                <div class="config-editable">
+                                    <input type="number" class="config-input" id="input-${item.field}" value="${item.value}" min="1000">
+                                    <button class="config-save-btn" onclick="saveConfig('${item.field}')">保存</button>
+                                </div>
+                            </li>
+                        `;
+                    }
+
                     return `
                         <li class="config-item">
                             <span class="config-key">${item.key}</span>
@@ -420,6 +474,62 @@
                         </li>
                     `;
                 }).join('');
+            }
+        }
+
+        async function saveConfig(field) {
+            const input = document.getElementById(`input-${field}`);
+            const btn = input.nextElementSibling;
+            const value = parseInt(input.value);
+
+            if (isNaN(value) || value < 1000) {
+                btn.textContent = '最小1000';
+                btn.classList.add('error');
+                setTimeout(() => {
+                    btn.textContent = '保存';
+                    btn.classList.remove('error');
+                }, 2000);
+                return;
+            }
+
+            btn.textContent = '保存中...';
+            btn.classList.add('saving');
+            btn.disabled = true;
+
+            try {
+                const response = await fetch('/admin-api/config', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        max_chat_history_length: value
+                    })
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    btn.textContent = '已保存';
+                    btn.classList.remove('saving');
+                    btn.classList.add('success');
+                    setTimeout(() => {
+                        btn.textContent = '保存';
+                        btn.classList.remove('success');
+                        btn.disabled = false;
+                    }, 2000);
+                } else {
+                    throw new Error(result.error || '保存失败');
+                }
+            } catch (error) {
+                btn.textContent = '保存失败';
+                btn.classList.remove('saving');
+                btn.classList.add('error');
+                setTimeout(() => {
+                    btn.textContent = '保存';
+                    btn.classList.remove('error');
+                    btn.disabled = false;
+                }, 2000);
             }
         }
 

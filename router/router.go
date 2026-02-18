@@ -4,6 +4,7 @@ import (
 	"claude2api/config"
 	"claude2api/middleware"
 	"claude2api/service"
+	"claude2api/web"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -17,12 +18,18 @@ func SetupRoutes(r *gin.Engine) {
 	// Health check endpoint
 	r.GET("/health", service.HealthCheckHandler)
 
-	// Admin routes (no auth required for status page)
-	r.GET("/admin/status", service.AdminStatusHandler)
+	// Admin API endpoint (no auth required)
+	r.GET("/admin-api/status", service.AdminStatusHandler)
+	r.POST("/admin-api/config", service.AdminUpdateConfigHandler)
+
+	// Admin static files (no auth required)
 	r.GET("/admin", func(c *gin.Context) {
 		c.Redirect(http.StatusMovedPermanently, "/admin/")
 	})
-	r.Static("/admin/", "./web/static")
+
+	// Serve embedded static files
+	staticContent, _ := web.GetStaticFS()
+	r.StaticFS("/admin/", http.FS(staticContent))
 
 	// Chat completions endpoint (OpenAI-compatible)
 	r.POST("/v1/chat/completions", service.ChatCompletionsHandler)
