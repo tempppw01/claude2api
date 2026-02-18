@@ -188,6 +188,40 @@ mirrorApiPrefix: ""
      ]
    }'
  ```
+
+ ## 🧩 实现原理
+
+本项目并不是直接调用 Anthropic 对外公开 API，而是模拟 Claude 网页端请求流程，并将结果适配为 OpenAI 兼容接口。
+
+### 1）请求处理链路
+
+1. `main.go` 启动 Gin 服务。
+2. `router/router.go` 注册 OpenAI 兼容路由（`/v1/chat/completions`、`/v1/models`）以及 Hugging Face 兼容路由（`/hf/v1/...`）。
+3. `middleware/auth.go` 执行 API Key 鉴权；如果开启镜像模式则按前缀放行。
+4. `service/handle.go` 解析 OpenAI 风格请求，将 `messages` 转换为 Claude 可用 prompt，并提取图片数据。
+
+### 2）会话与账号调度
+
+- `config/config.go` 支持从 `config.yaml` 或环境变量加载配置。
+- `SESSIONS` 可配置多个 `sessionKey`，服务会按轮询方式选取账号。
+- 请求失败时自动重试并切换到下一个账号（最多 `RetryCount` 次，内部限制上限 5）。
+
+### 3）Claude Web 协议模拟
+
+- `core/api.go` 使用 `req/v3` + Chrome 指纹模拟网页请求，设置 Claude 所需 headers/cookies，并调用 `https://claude.ai/api/...`。
+- 若未提供 `orgID`，会先请求组织列表并缓存可用组织。
+- 发送请求时会创建临时会话、上传图片/长上下文文件、接收流式事件；按配置异步删除会话。
+
+### 4）OpenAI 兼容策略
+
+- `model/openai.go` 定义 OpenAI 请求/响应结构体。
+- 服务层将 Claude 返回内容封装为 OpenAI 兼容格式，支持流式和非流式两种模式。
+- 这样可以直接复用常见 OpenAI SDK 与调用方式，减少接入改造成本。
+
+### 5）长上下文与多模态
+
+- `utils/request.go` 负责 role 前缀处理、`text/image_url` 混合消息解析，以及可选的 artifacts 禁用提示词注入。
+- 当 prompt 超过 `MAX_CHAT_HISTORY_LENGTH` 时，会切换为上传文件承载上下文，避免超长请求直接失败。
  
  ## 🤝 贡献
  欢迎贡献！请随时提交Pull Request。

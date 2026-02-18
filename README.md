@@ -209,6 +209,40 @@ curl -X POST http://localhost:8080/v1/chat/completions \
   }'
 ```
 
+## 🧩 Implementation Principles
+
+This project does not call Anthropic's public API directly. Instead, it simulates Claude Web requests and converts the interaction into an OpenAI-compatible API surface.
+
+### 1) Request pipeline
+
+1. `main.go` starts a Gin server.
+2. `router/router.go` mounts OpenAI-compatible routes (`/v1/chat/completions`, `/v1/models`) and HuggingFace-compatible routes (`/hf/v1/...`).
+3. `middleware/auth.go` validates the bearer API key (or enables mirror mode when configured).
+4. `service/handle.go` parses OpenAI-style requests and transforms `messages` into Claude prompt text + image list.
+
+### 2) Session and account scheduling
+
+- `config/config.go` loads configuration from `config.yaml` (if present) or environment variables.
+- `SESSIONS` supports multiple Claude web session keys; the service uses round-robin + retry to improve stability.
+- When a request fails, it automatically switches to another configured session (up to `RetryCount`, max 5).
+
+### 3) Claude Web emulation layer
+
+- `core/api.go` builds a browser-like HTTP client (`req/v3` + Chrome impersonation), sets Claude-required headers/cookies, and calls `https://claude.ai/api/...` endpoints.
+- If `orgID` is missing, it fetches organizations first and caches the chosen org for later requests.
+- It creates a new conversation, sends messages, optionally uploads images/large context files, streams response events, and deletes the conversation asynchronously when enabled.
+
+### 4) OpenAI compatibility strategy
+
+- `model/openai.go` defines OpenAI-style request/response structures.
+- The service converts incoming OpenAI `messages` into Claude-compatible prompt content.
+- Both streaming (`text/event-stream`) and non-streaming responses are wrapped in OpenAI-compatible JSON shapes so OpenAI SDKs can call this service with minimal changes.
+
+### 5) Context and multimodal handling
+
+- `utils/request.go` handles role prefixing, mixed message blocks (`text`, `image_url`), and optional artifact-suppression prompt injection.
+- If prompt context exceeds `MAX_CHAT_HISTORY_LENGTH`, the project switches to file-based context upload mode to avoid oversized direct prompt payloads.
+
 
 ## 🤝 Contributing
 
