@@ -24,6 +24,7 @@ func SetupRoutes(r *gin.Engine) {
 	r.POST("/admin-api/session", service.AdminAddSessionHandler)
 	r.DELETE("/admin-api/session/:index", service.AdminRemoveSessionHandler)
 	r.POST("/admin-api/session/test", service.AdminTestSessionHandler)
+	r.GET("/admin-api/sessions/export", service.AdminExportSessionsHandler)
 	r.GET("/admin-api/stats", service.AdminStatsHandler)
 	r.GET("/admin-api/logs", service.AdminLogsHandler)
 	r.DELETE("/admin-api/logs", service.AdminClearLogsHandler)

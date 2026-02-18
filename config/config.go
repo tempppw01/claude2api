@@ -213,6 +213,13 @@ func LoadConfig() *Config {
 		// 如果配置文件不存在，从环境变量加载
 		logger.Info("Loading configuration from environment variables")
 		config = loadConfigFromEnv()
+		
+		// 自动创建默认配置文件，便于前端持久化
+		if err := createDefaultConfigFile(config); err != nil {
+			logger.Error(fmt.Sprintf("Failed to create default config file: %v", err))
+		} else {
+			logger.Info("Created default config.yaml file")
+		}
 	}
 
 	// 合并环境变量中的 Session（去重）
@@ -222,6 +229,43 @@ func LoadConfig() *Config {
 	}
 
 	return config
+}
+
+// createDefaultConfigFile 创建默认配置文件
+func createDefaultConfigFile(config *Config) error {
+	workDir, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("failed to get working directory: %w", err)
+	}
+	
+	configPath := filepath.Join(workDir, "config.yaml")
+	
+	// 构建配置数据
+	configData := map[string]interface{}{
+		"sessions":                config.Sessions,
+		"address":                 config.Address,
+		"apiKey":                  config.APIKey,
+		"proxy":                   config.Proxy,
+		"chatDelete":              config.ChatDelete,
+		"maxChatHistoryLength":    config.MaxChatHistoryLength,
+		"noRolePrefix":            config.NoRolePrefix,
+		"promptDisableArtifacts":  config.PromptDisableArtifacts,
+		"enableMirrorApi":         config.EnableMirrorApi,
+		"mirrorApiPrefix":         config.MirrorApiPrefix,
+	}
+	
+	// 序列化为 YAML
+	yamlData, err := yaml.Marshal(configData)
+	if err != nil {
+		return fmt.Errorf("failed to marshal config: %w", err)
+	}
+	
+	// 写入文件
+	if err := os.WriteFile(configPath, yamlData, 0644); err != nil {
+		return fmt.Errorf("failed to write config file: %w", err)
+	}
+	
+	return nil
 }
 
 // parseSessionsFromEnv 从环境变量解析 Session

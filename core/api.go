@@ -45,6 +45,12 @@ type ResponseEvent struct {
 	} `json:"error"`
 }
 
+// TokenInfo represents token usage information
+type TokenInfo struct {
+	InputTokens  int `json:"input_tokens"`
+	OutputTokens int `json:"output_tokens"`
+}
+
 func NewClient(sessionKey string, proxy string, model string) *Client {
 	client := req.C().ImpersonateChrome().SetTimeout(time.Minute * 5)
 	client.Transport.SetResponseHeaderTimeout(time.Second * 10)
@@ -197,10 +203,10 @@ func (c *Client) CreateConversation() (string, error) {
 	return uuid, nil
 }
 
-// SendMessage sends a message to a conversation and returns the status and response
-func (c *Client) SendMessage(conversationID string, message string, stream bool, gc *gin.Context) (int, error) {
+// SendMessage sends a message to a conversation and returns token info and error
+func (c *Client) SendMessage(conversationID string, message string, stream bool, gc *gin.Context) (*TokenInfo, error) {
 	if c.orgID == "" {
-		return 500, errors.New("organization ID not set")
+		return nil, errors.New("organization ID not set")
 	}
 	url := fmt.Sprintf("https://claude.ai/api/organizations/%s/chat_conversations/%s/completion",
 		c.orgID, conversationID)
@@ -219,20 +225,80 @@ func (c *Client) SendMessage(conversationID string, message string, stream bool,
 		SetBody(requestBody).
 		Post(url)
 	if err != nil {
-		return 500, fmt.Errorf("request failed: %w", err)
+		return nil, fmt.Errorf("request failed: %w", err)
 	}
 	logger.Info(fmt.Sprintf("Claude response status code: %d", resp.StatusCode))
 	if resp.StatusCode == http.StatusTooManyRequests {
-		return http.StatusTooManyRequests, fmt.Errorf("rate limit exceeded")
+		// Try to parse rate limit reset time from headers or response body
+		resetInfo := parseRateLimitReset(resp)
+		if resetInfo != "" {
+			return nil, fmt.Errorf("rate limit exceeded - reset at: %s", resetInfo)
+		}
+		return nil, fmt.Errorf("rate limit exceeded")
 	}
 	if resp.StatusCode != http.StatusOK {
-		return resp.StatusCode, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
+		// Try to read error body for more details
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		if len(bodyBytes) > 0 {
+			return nil, fmt.Errorf("unexpected status code: %d, response: %s", resp.StatusCode, string(bodyBytes))
+		}
+		return nil, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
 	}
-	return 200, c.HandleResponse(resp.Body, stream, gc)
+	return c.HandleResponse(resp.Body, stream, gc)
+}
+
+// parseRateLimitReset attempts to extract rate limit reset time from response
+func parseRateLimitReset(resp *req.Response) string {
+	// Try standard Retry-After header (seconds or date)
+	if retryAfter := resp.Header.Get("Retry-After"); retryAfter != "" {
+		// Check if it's a number (seconds) or a date
+		if seconds, err := strconv.Atoi(retryAfter); err == nil {
+			resetTime := time.Now().Add(time.Duration(seconds) * time.Second)
+			return resetTime.Format("15:04:05 MST")
+		}
+		// It might be a date string
+		return retryAfter
+	}
+
+	// Try x-ratelimit-reset header
+	if reset := resp.Header.Get("x-ratelimit-reset"); reset != "" {
+		return reset
+	}
+
+	// Try other common rate limit headers
+	if reset := resp.Header.Get("X-RateLimit-Reset"); reset != "" {
+		return reset
+	}
+
+	// Try to parse from response body
+	if resp.Body != nil {
+		bodyBytes, err := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		if err == nil && len(bodyBytes) > 0 {
+			var body map[string]interface{}
+			if json.Unmarshal(bodyBytes, &body) == nil {
+				// Check common fields
+				if reset, ok := body["reset_at"].(string); ok {
+					return reset
+				}
+				if reset, ok := body["retry_after"].(string); ok {
+					return reset
+				}
+				if reset, ok := body["error"].(map[string]interface{}); ok {
+					if msg, ok := reset["message"].(string); ok {
+						return msg
+					}
+				}
+			}
+		}
+	}
+
+	return ""
 }
 
 // HandleResponse converts Claude's SSE format to OpenAI format and writes to the response writer
-func (c *Client) HandleResponse(body io.ReadCloser, stream bool, gc *gin.Context) error {
+func (c *Client) HandleResponse(body io.ReadCloser, stream bool, gc *gin.Context) (*TokenInfo, error) {
 	defer body.Close()
 	// Set headers for streaming
 	if stream {
@@ -253,12 +319,15 @@ func (c *Client) HandleResponse(body io.ReadCloser, stream bool, gc *gin.Context
 	useToolEnd := false
 	nextLanguage := false
 	languageStr := "md"
+	// Token tracking
+	inputTokens := 0
+	outputTokens := 0
 	for scanner.Scan() {
 		select {
 		case <-clientDone:
 			// 客户端已断开连接，清理资源并退出
 			logger.Info("Client closed connection")
-			return nil
+			return &TokenInfo{InputTokens: inputTokens, OutputTokens: outputTokens}, nil
 		default:
 			// 继续处理响应
 		}
@@ -272,7 +341,7 @@ func (c *Client) HandleResponse(body io.ReadCloser, stream bool, gc *gin.Context
 		if err := json.Unmarshal([]byte(data), &event); err == nil {
 			if event.Type == "error" && event.Error.Message != "" {
 				model.ReturnOpenAIResponse(event.Error.Message, stream, gc)
-				return nil
+				return &TokenInfo{InputTokens: inputTokens, OutputTokens: outputTokens}, nil
 			}
 			if event.ContentBlock.Type == "tool_use" {
 				useTool = true
@@ -388,7 +457,7 @@ func (c *Client) HandleResponse(body io.ReadCloser, stream bool, gc *gin.Context
 		}
 	}
 	if err := scanner.Err(); err != nil {
-		return fmt.Errorf("error reading response: %w", err)
+		return nil, fmt.Errorf("error reading response: %w", err)
 	}
 	if !stream {
 		model.ReturnOpenAIResponse(res_all_text, stream, gc)
@@ -398,7 +467,11 @@ func (c *Client) HandleResponse(body io.ReadCloser, stream bool, gc *gin.Context
 		gc.Writer.Flush()
 	}
 
-	return nil
+	// Estimate tokens: roughly 4 characters per token for most languages
+	inputTokens = len(res_all_text) / 4
+	outputTokens = len(res_all_text) / 4
+
+	return &TokenInfo{InputTokens: inputTokens, OutputTokens: outputTokens}, nil
 }
 func decodeUnicodeEscape(s string) string {
 	var result []rune

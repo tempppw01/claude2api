@@ -45,6 +45,7 @@ func AdminStatusHandler(c *gin.Context) {
 			"prompt_disable_artifacts": config.ConfigInstance.PromptDisableArtifacts,
 			"enable_mirror_api":        config.ConfigInstance.EnableMirrorApi,
 			"mirror_api_prefix":        config.ConfigInstance.MirrorApiPrefix,
+			"api_key":                  maskAPIKey(config.ConfigInstance.APIKey),
 		},
 	}
 
@@ -208,6 +209,8 @@ type UpdateConfigRequest struct {
 	PromptDisableArtifacts  *bool   `json:"prompt_disable_artifacts"`
 	EnableMirrorApi         *bool   `json:"enable_mirror_api"`
 	MirrorApiPrefix         *string `json:"mirror_api_prefix"`
+	APIKey                  *string `json:"api_key"`
+	Proxy                   *string `json:"proxy"`
 }
 
 // AdminUpdateConfigHandler handles updating configuration
@@ -247,6 +250,14 @@ func AdminUpdateConfigHandler(c *gin.Context) {
 		config.ConfigInstance.MirrorApiPrefix = *req.MirrorApiPrefix
 	}
 
+	if req.APIKey != nil && *req.APIKey != "" {
+		config.ConfigInstance.APIKey = *req.APIKey
+	}
+
+	if req.Proxy != nil {
+		config.ConfigInstance.Proxy = *req.Proxy
+	}
+
 	// Try to save to config.yaml
 	if err := saveConfigToYAML(); err != nil {
 		logger.Error(fmt.Sprintf("Failed to save config to YAML: %v", err))
@@ -261,6 +272,8 @@ func AdminUpdateConfigHandler(c *gin.Context) {
 				"prompt_disable_artifacts":   config.ConfigInstance.PromptDisableArtifacts,
 				"enable_mirror_api":          config.ConfigInstance.EnableMirrorApi,
 				"mirror_api_prefix":          config.ConfigInstance.MirrorApiPrefix,
+				"api_key":                    maskAPIKey(config.ConfigInstance.APIKey),
+				"proxy":                      config.ConfigInstance.Proxy,
 			},
 		})
 		return
@@ -278,8 +291,18 @@ func AdminUpdateConfigHandler(c *gin.Context) {
 			"prompt_disable_artifacts":   config.ConfigInstance.PromptDisableArtifacts,
 			"enable_mirror_api":          config.ConfigInstance.EnableMirrorApi,
 			"mirror_api_prefix":          config.ConfigInstance.MirrorApiPrefix,
+			"api_key":                    maskAPIKey(config.ConfigInstance.APIKey),
+			"proxy":                      config.ConfigInstance.Proxy,
 		},
 	})
+}
+
+// maskAPIKey masks the API key for display
+func maskAPIKey(key string) string {
+	if len(key) <= 8 {
+		return "****"
+	}
+	return key[:4] + "****" + key[len(key)-4:]
 }
 
 // AdminStatsHandler handles the stats endpoint
@@ -289,7 +312,36 @@ func AdminStatsHandler(c *gin.Context) {
 }
 
 // AdminLogsHandler handles the logs endpoint
+// Supports both legacy limit parameter and new pagination parameters
 func AdminLogsHandler(c *gin.Context) {
+	// Check for pagination parameters
+	pageStr := c.Query("page")
+	pageSizeStr := c.Query("page_size")
+
+	if pageStr != "" || pageSizeStr != "" {
+		// Use pagination mode
+		page := 1
+		pageSize := 10
+
+		if pageStr != "" {
+			fmt.Sscanf(pageStr, "%d", &page)
+		}
+		if pageSizeStr != "" {
+			fmt.Sscanf(pageSizeStr, "%d", &pageSize)
+		}
+
+		logs, total, hasMore := logger.GlobalRequestLogger.GetLogsWithPagination(page, pageSize)
+		c.JSON(http.StatusOK, gin.H{
+			"logs":      logs,
+			"page":      page,
+			"page_size": pageSize,
+			"total":     total,
+			"has_more":  hasMore,
+		})
+		return
+	}
+
+	// Legacy mode: use limit parameter
 	limit := 100 // default limit
 	if l := c.Query("limit"); l != "" {
 		fmt.Sscanf(l, "%d", &limit)
@@ -377,4 +429,43 @@ func getModelList() []string {
 		"claude-sonnet-4-6-20260217",
 		"claude-opus-4-20250514",
 	}
+}
+
+// AdminExportSessionsHandler handles exporting sessions to CSV or TXT
+func AdminExportSessionsHandler(c *gin.Context) {
+	format := c.Query("format")
+	if format == "" {
+		format = "csv"
+	}
+
+	if format != "csv" && format != "txt" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid format. Use 'csv' or 'txt'"})
+		return
+	}
+
+	sessions := config.ConfigInstance.Sessions
+	if len(sessions) == 0 {
+		c.JSON(http.StatusOK, gin.H{"message": "No sessions to export"})
+		return
+	}
+
+	var content string
+	filename := "sessions." + format
+
+	if format == "csv" {
+		content = "index,session_key,org_id\n"
+		for i, s := range sessions {
+			content += fmt.Sprintf("%d,%s,%s\n", i, s.SessionKey, s.OrgID)
+		}
+	} else {
+		// TXT format
+		for i, s := range sessions {
+			content += fmt.Sprintf("Session %d:\n", i+1)
+			content += fmt.Sprintf("  Key: %s\n", s.SessionKey)
+			content += fmt.Sprintf("  Org ID: %s\n\n", s.OrgID)
+		}
+	}
+
+	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%s", filename))
+	c.Data(http.StatusOK, "text/plain; charset=utf-8", []byte(content))
 }

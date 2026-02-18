@@ -1,64 +1,50 @@
 # Claude2Api
+
 将 Claude 网页服务转为 API 服务，支持识图、文件上传、流式传输与思考输出。  
 API 兼容 OpenAI 调用格式。
 
 [![Go Report Card](https://goreportcard.com/badge/github.com/yushangxiao/claude2api)](https://goreportcard.com/report/github.com/yushangxiao/claude2api)
 [![License](https://img.shields.io/github/license/yushangxiao/claude2api)](LICENSE)
 
-**文档语言：** [中文（优先）](https://github.com/yushangxiao/claude2api/blob/main/docs/chinses.md) | [English](https://github.com/yushangxiao/claude2api/blob/main/README.md)
-
 > 提醒：只有 PRO 用户可以使用所有模型；免费用户可使用 `claude-sonnet-4-20250514` 和 `claude-sonnet-4-6-20260217`。
 
----
+## ✨ 特性
 
-Transform Claude's web service into an API service, supporting image recognition, file upload, streaming transmission, and thinking output.  
-The API supports OpenAI-compatible access.
+- 🖼️ **图像识别** - 发送图像给 Claude 进行分析
+- 📝 **自动对话管理** - 对话可在使用后自动删除
+- 🌊 **流式响应** - 获取 Claude 实时流式输出
+- 📁 **文件上传支持** - 上传长文本内容
+- 🧠 **思考过程** - 访问 Claude 的逐步推理，自动输出 `<tool_call>` 标签
+- 🔄 **聊天历史管理** - 控制对话上下文长度，超出将上传为文件
+- 🌐 **代理支持** - 通过您首选的代理请求
+- 🔐 **API 密钥认证** - 保护您的 API 端点
+- 🔁 **自动重试** - 请求失败时，自动切换下一个账号
+- 🌐 **直接代理** - 使用 `sk-ant-*` 直接作为 key 使用
+- 📊 **管理面板** - 前端可视化管理 Session、配置、查看日志
 
-> NOTICE: ONLY PRO USERS CAN USE ALL MODELS. FREE USERS CAN USE `claude-sonnet-4-20250514` AND `claude-sonnet-4-6-20260217`.
+## 📋 前提条��
 
-## ✨ Features
+- Go 1.23+（从源代码构建）
+- Docker（用于容器化部署）
 
-- 🖼️ **Image Recognition** - Send images to Claude for analysis
-- 📝 **Automatic Conversation Management** -  Conversation can be automatically deleted after use
-- 🌊 **Streaming Responses** - Get real-time streaming outputs from Claude
-- 📁 **File Upload Support** - Upload long context
-- 🧠 **Thinking Process** - Access Claude's step-by-step reasoning, support <think>
-- 🔄 **Chat History Management** - Control the length of conversation context , exceeding will upload file
-- 🌐 **Proxy Support** - Route requests through your preferred proxy
-- 🔐 **API Key Authentication** - Secure your API endpoints
-- 🔁 **Automatic Retry** - Feature to automatically retry requests when request fail
-- 🌐 **Direct Proxy** -let sk-ant-sid01* as key to use
-
-## 📋 Prerequisites
-
-- Go 1.23+ (for building from source)
-- Docker (for containerized deployment)
-
-## 🚀 Deployment Options
+## 🚀 部署选项
 
 ### Docker
 
 ```bash
 docker run -d \
   -p 8080:8080 \
-  -e SESSIONS=sk-ant-sid01-xxxx,sk-ant-sid01-yyyy \
-  -e APIKEY=123 \
-  -e CHAT_DELETE=true \
-  -e MAX_CHAT_HISTORY_LENGTH=10000 \
-  -e NO_ROLE_PREFIX=false \
-  -e PROMPT_DISABLE_ARTIFACTS=false \
-  -e ENABLE_MIRROR_API=false \
-  -e MIRROR_API_PREFIX=/mirror \
+  -e APIKEY=your-api-key \
+  -v /path/to/config.yaml:/app/config.yaml \
   --name claude2api \
   34v0wphix/claude2api:latest
 ```
 
 ### Docker Compose
 
-Create a `docker-compose.yml` file:
+创建一个 `docker-compose.yml` 文件：
 
 ```yaml
-version: '3'
 services:
   claude2api:
     image: 34v0wphix/claude2api:latest
@@ -66,72 +52,69 @@ services:
     ports:
       - "8080:8080"
     environment:
-      - SESSIONS=sk-ant-sid01-xxxx,sk-ant-sid01-yyyy
-      - ADDRESS=0.0.0.0:8080
-      - APIKEY=123
-      - PROXY=http://proxy:2080  # Optional
-      - CHAT_DELETE=true
-      - MAX_CHAT_HISTORY_LENGTH=10000
-      - NO_ROLE_PREFIX=false
-      - PROMPT_DISABLE_ARTIFACTS=true
-      - ENABLE_MIRROR_API=false
-      - MIRROR_API_PREFIX=/mirror
+      - APIKEY=your-api-key
+    volumes:
+      - ./config.yaml:/app/config.yaml
     restart: unless-stopped
-
 ```
 
-Then run:
+然后运行：
 
 ```bash
 docker-compose up -d
 ```
 
+> **注意**：首次启动前请先创建空的 `config.yaml` 文件：`touch config.yaml`，否则 Docker 会将其创建为目录。
+
 ### Hugging Face Spaces
 
-You can deploy this project to Hugging Face Spaces with Docker:
+您可以使用 Docker 将此项目部署到 Hugging Face Spaces：
 
-1. Fork the Hugging Face Space at [https://huggingface.co/spaces/rclon/claude2api](https://huggingface.co/spaces/rclon/claude2api)
-2. Configure your environment variables in the Settings tab
-3. The Space will automatically  deploy the Docker image
+1. Fork Hugging Face Space：[https://huggingface.co/spaces/rclon/claude2api](https://huggingface.co/spaces/rclon/claude2api)
+2. 在设置选项卡中配置您的环境变量
+3. Space 将自动部署 Docker 镜像
 
-notice: In Hugging Face, /v1 might be blocked, you can use /hf/v1 instead.
-### Direct Deployment
+> 注意：在 Hugging Face 中，`/v1` 可能被屏蔽，您可以使用 `/hf/v1` 代替。
+
+### 直接部署
 
 ```bash
-# Clone the repository
+# 克隆仓库
 git clone https://github.com/yushangxiao/claude2api.git
 cd claude2api
-cp .env.example .env  
-vim .env  
-# Build the binary
-go build -o claude2api .
 
+# 复制配置文件
+cp config.yaml.example config.yaml
+vim config.yaml
+
+# 构建并运行
+go build -o claude2api .
 ./claude2api
 ```
 
-## ⚙️ Configuration
+## ⚙️ 配置
 
-### YAML Configuration
+### YAML 配置
 
-You can configure Claude2API using a `config.yaml` file in the application's root directory. If this file exists, it will be used instead of environment variables.
+你可以在应用程序的根目录下使用 `config.yaml` 文件来配置 Claude2API。如果此文件存在，将会优先使用它而不是环境变量。
 
-Example `config.yaml`:
+`config.yaml` 示例：
 
 ```yaml
-# Sessions configuration
+# Sessions 配置
 sessions:
   - sessionKey: "sk-ant-sid01-xxxx"
     orgID: ""
   - sessionKey: "sk-ant-sid01-yyyy"
     orgID: ""
 
-# Server address
+# 服务地址
 address: "0.0.0.0:8080"
 
-# API authentication key
-apiKey: "123"
+# API 认证密钥
+apiKey: "your-api-key"
 
-# Other configuration options...
+# 其他配置选项
 chatDelete: true
 maxChatHistoryLength: 10000
 noRolePrefix: false
@@ -140,37 +123,43 @@ enableMirrorApi: false
 mirrorApiPrefix: ""
 ```
 
-A sample configuration file is provided as `config.yaml.example` in the repository.
+仓库中提供了一个名为 `config.yaml.example` 的示例配置文件。
 
-### Environment Variables
+### 环境变量
 
-If `config.yaml` doesn't exist, the application will use environment variables for configuration:
+如果 `config.yaml` 不存在，应用程序将使用环境变量进行配置：
 
-| Environment Variable | Description | Default |
-|----------------------|-------------|---------|
-| `SESSIONS` | Comma-separated list of Claude API session keys | Required |
-| `ADDRESS` | Server address and port | `0.0.0.0:8080` |
-| `APIKEY` | API key for authentication | Required |
-| `PROXY` | HTTP proxy URL | Optional |
-| `CHAT_DELETE` | Whether to delete chat sessions after use | `true` |
-| `MAX_CHAT_HISTORY_LENGTH` | Exceeding will text to file | `10000` |
-| `NO_ROLE_PREFIX` | Do not add role in every message | `false` |
-| `PROMPT_DISABLE_ARTIFACTS` | Add Prompt try to disable Artifacts | `false` |
-| `ENABLE_MIRROR_API` | Enable direct use sk-ant-* as key | `false` |
-| `MIRROR_API_PREFIX` | Add Prefix to protect Mirror，required when ENABLE_MIRROR_API is true | `` |
+| 环境变量 | 描述 | 默认值 |
+|---------|------|--------|
+| `SESSIONS` | 逗号分隔的 Claude API 会话密钥列表 | 必填 |
+| `ADDRESS` | 服务器地址和端口 | `0.0.0.0:8080` |
+| `APIKEY` | 用于认证的 API 密钥 | 必填 |
+| `PROXY` | HTTP 代理 URL | 可选 |
+| `CHAT_DELETE` | 是否在使用后删除聊天会话 | `true` |
+| `MAX_CHAT_HISTORY_LENGTH` | 超出此长度将文本转为文件 | `10000` |
+| `NO_ROLE_PREFIX` | 不在每条消息前添加角色 | `false` |
+| `PROMPT_DISABLE_ARTIFACTS` | 添加提示词尝试禁用 Artifacts | `false` |
+| `ENABLE_MIRROR_API` | 允许直接使用 `sk-ant-*` 作为 key 使用 | `false` |
+| `MIRROR_API_PREFIX` | 对直接使用增加接口前缀，开启 `ENABLE_MIRROR_API` 时必填 | `` |
 
+### 配置优先级
 
-## 📝 API Usage
+1. 如果存在 `config.yaml`，优先使用 YAML 配置
+2. 如果不存在 `config.yaml`，使用环境变量配置
+3. 首次启动时会自动创建默认的 `config.yaml` 文件
+4. 可以通过管理面板修改配置并持久化到 `config.yaml`
 
-### Authentication
+## 📝 API 使用
 
-Include your API key in the request header:
+### 认证
+
+在请求头中包含您的 API 密钥：
 
 ```
 Authorization: Bearer YOUR_API_KEY
 ```
 
-### Chat Completion
+### 聊天完成
 
 ```bash
 curl -X POST http://localhost:8080/v1/chat/completions \
@@ -181,14 +170,14 @@ curl -X POST http://localhost:8080/v1/chat/completions \
     "messages": [
       {
         "role": "user",
-        "content": "Hello, Claude!"
+        "content": "你好，Claude！"
       }
     ],
     "stream": true
   }'
 ```
 
-### Image Analysis
+### 图像分析
 
 ```bash
 curl -X POST http://localhost:8080/v1/chat/completions \
@@ -202,7 +191,7 @@ curl -X POST http://localhost:8080/v1/chat/completions \
         "content": [
           {
             "type": "text",
-            "text": "What\'s in this image?"
+            "text": "这张图片里有什么？"
           },
           {
             "type": "image_url",
@@ -216,58 +205,82 @@ curl -X POST http://localhost:8080/v1/chat/completions \
   }'
 ```
 
-## 🧩 Implementation Principles
+### 管理面板
 
-This project does not call Anthropic's public API directly. Instead, it simulates Claude Web requests and converts the interaction into an OpenAI-compatible API surface.
+访问 `http://localhost:8080/admin` 进入管理面板，可以：
 
-### 1) Request pipeline
+- 查看服务状态和模型列表
+- 管理 Session（添加、删除、测试、导出）
+- 修改配置并持久化
+- 查看请求日志和统计信息
 
-1. `main.go` starts a Gin server.
-2. `router/router.go` mounts OpenAI-compatible routes (`/v1/chat/completions`, `/v1/models`) and HuggingFace-compatible routes (`/hf/v1/...`).
-3. `middleware/auth.go` validates the bearer API key (or enables mirror mode when configured).
-4. `service/handle.go` parses OpenAI-style requests and transforms `messages` into Claude prompt text + image list.
+## 🧩 实现原理
 
-### 2) Session and account scheduling
+本项目并不是直接调用 Anthropic 对外公开 API，而是模拟 Claude 网页端请求流程，并将结果适配为 OpenAI 兼容接口。
 
-- `config/config.go` loads configuration from `config.yaml` (if present) or environment variables.
-- `SESSIONS` supports multiple Claude web session keys; the service uses round-robin + retry to improve stability.
-- When a request fails, it automatically switches to another configured session (up to `RetryCount`, max 5).
+### 1）请求处理链路
 
-### 3) Claude Web emulation layer
+1. `main.go` 启动 Gin 服务。
+2. `router/router.go` 注册 OpenAI 兼容路由（`/v1/chat/completions`、`/v1/models`）以及 Hugging Face 兼容路由（`/hf/v1/...`）。
+3. `middleware/auth.go` 执行 API Key 鉴权；如果开启镜像模式则按前缀放行。
+4. `service/handle.go` 解析 OpenAI 风格请求，将 `messages` 转换为 Claude 可用 prompt，并提取图片数据。
 
-- `core/api.go` builds a browser-like HTTP client (`req/v3` + Chrome impersonation), sets Claude-required headers/cookies, and calls `https://claude.ai/api/...` endpoints.
-- If `orgID` is missing, it fetches organizations first and caches the chosen org for later requests.
-- It creates a new conversation, sends messages, optionally uploads images/large context files, streams response events, and deletes the conversation asynchronously when enabled.
+### 2）会话与账号调度
 
-### 4) OpenAI compatibility strategy
+- `config/config.go` 支持从 `config.yaml` 或环境变量加载配置。
+- `SESSIONS` 可配置多个 `sessionKey`，服务会按轮询方式选取账号。
+- 请求失败时自动重试并切换到下一个账号（最多 `RetryCount` 次，内部限制上限 5）。
 
-- `model/openai.go` defines OpenAI-style request/response structures.
-- The service converts incoming OpenAI `messages` into Claude-compatible prompt content.
-- Both streaming (`text/event-stream`) and non-streaming responses are wrapped in OpenAI-compatible JSON shapes so OpenAI SDKs can call this service with minimal changes.
+### 3）Claude Web 协议模拟
 
-### 5) Context and multimodal handling
+- `core/api.go` 使用 `req/v3` + Chrome 指纹模拟网页请求，设置 Claude 所需 headers/cookies，并调用 `https://claude.ai/api/...`。
+- 若未提供 `orgID`，会先请求组织列表并缓存可用组织。
+- 发送请求时会创建临时会话、上传图片/长上下文文件、接收流式事件；按配置异步删除会话。
 
-- `utils/request.go` handles role prefixing, mixed message blocks (`text`, `image_url`), and optional artifact-suppression prompt injection.
-- If prompt context exceeds `MAX_CHAT_HISTORY_LENGTH`, the project switches to file-based context upload mode to avoid oversized direct prompt payloads.
+### 4）OpenAI 兼容策略
 
+- `model/openai.go` 定义 OpenAI 请求/响应结构体。
+- 服务层将 Claude 返回内容封装为 OpenAI 兼容格式，支持流式和非流式两种模式。
+- 这样可以直接复用常见 OpenAI SDK 与调用方式，减少接入改造成本。
 
-## 🤝 Contributing
+### 5）长上下文与多模态
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+- `utils/request.go` 负责 role 前缀处理、`text/image_url` 混合消息解析，以及可选的 artifacts 禁用提示词注入。
+- 当 prompt 超过 `MAX_CHAT_HISTORY_LENGTH` 时，会切换为上传文件承载上下文，避免超长请求直接失败。
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+### 6）请求日志与监控
 
-## 📄 License
+- `logger/stats.go` 提供内存级请求日志记录，支持统计成功率、RPM、平均耗时等指标。
+- 管理面板展示请求日志，支持分页浏览（每页 10 条）、错误详情展示和历史成功率统计。
+- 日志包含 Session 索引、输入/输出 Token 数、耗时和错误信息。
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+### 7）限流处理
 
-## 🙏 Acknowledgments
+- 当 Claude Web 返回 HTTP 429（限流）时，系统会尝试从以下来源解析限流重置时间：
+  - `Retry-After` 响应头（秒数或日期）
+  - `x-ratelimit-reset` 响应头
+  - 响应体字段（`reset_at`、`retry_after`、`error.message`）
+- 重置时间会包含在错误信息中，便于在日志中查看。
 
-- [Anthropic](https://www.anthropic.com/) for creating Claude
-- The Go community for the amazing ecosystem
+## 🤝 贡献
 
- Made with ❤️ by [yushangxiao](https://github.com/yushangxiao)
+欢迎贡献！请随时提交 Pull Request。
+
+1. Fork 仓库
+2. 创建特性分支（`git checkout -b feature/amazing-feature`）
+3. 提交您的更改（`git commit -m '添加一些惊人的特性'`）
+4. 推送到分支（`git push origin feature/amazing-feature`）
+5. 打开 Pull Request
+
+## 📄 许可证
+
+本项目采用 MIT 许可证 - 详见 [LICENSE](LICENSE) 文件。
+
+## 🙏 致谢
+
+- 感谢 [Anthropic](https://www.anthropic.com/) 创建 Claude
+- 感谢 Go 社区提供的优秀生态系统
+
+---
+
+由 [yushangxiao](https://github.com/yushangxiao) 用 ❤️ 制作

@@ -7,16 +7,18 @@ import (
 
 // RequestLog represents a single API request log entry
 type RequestLog struct {
-	Timestamp   time.Time `json:"timestamp"`
-	Method      string    `json:"method"`
-	Path        string    `json:"path"`
-	Model       string    `json:"model"`
-	StatusCode  int       `json:"status_code"`
-	Duration    int64     `json:"duration_ms"` // milliseconds
-	Success     bool      `json:"success"`
-	Error       string    `json:"error,omitempty"`
-	SessionIdx  int       `json:"session_idx"`
-	IsStreaming bool      `json:"is_streaming"`
+	Timestamp    time.Time `json:"timestamp"`
+	Method       string    `json:"method"`
+	Path         string    `json:"path"`
+	Model        string    `json:"model"`
+	StatusCode   int       `json:"status_code"`
+	Duration     int64     `json:"duration_ms"` // milliseconds
+	Success      bool      `json:"success"`
+	Error        string    `json:"error,omitempty"`
+	SessionIdx   int       `json:"session_idx"`
+	IsStreaming  bool      `json:"is_streaming"`
+	InputTokens  int       `json:"input_tokens"`
+	OutputTokens int       `json:"output_tokens"`
 }
 
 // Stats represents aggregated statistics
@@ -122,6 +124,63 @@ func (rl *RequestLogger) GetRecentLogs(limit int) []RequestLog {
 		result[i] = rl.logs[len(rl.logs)-1-i]
 	}
 	return result
+}
+
+// GetLogsWithPagination returns logs with pagination support
+// page is 1-indexed, pageSize is the number of items per page
+func (rl *RequestLogger) GetLogsWithPagination(page, pageSize int) ([]RequestLog, int, bool) {
+	rl.mu.RLock()
+	defer rl.mu.RUnlock()
+
+	total := len(rl.logs)
+	if total == 0 {
+		return []RequestLog{}, 0, false
+	}
+
+	// Default values
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 {
+		pageSize = 10
+	}
+	if pageSize > 100 {
+		pageSize = 100
+	}
+
+	// Calculate total pages
+	totalPages := (total + pageSize - 1) / pageSize
+	if page > totalPages {
+		page = totalPages
+	}
+
+	// Calculate start and end indices (logs are stored oldest first, but we want newest first)
+	startIdx := total - page*pageSize
+	endIdx := total - (page-1)*pageSize
+
+	if startIdx < 0 {
+		startIdx = 0
+	}
+	if endIdx > total {
+		endIdx = total
+	}
+
+	// Extract logs in reverse order (newest first)
+	result := make([]RequestLog, 0, endIdx-startIdx)
+	for i := endIdx - 1; i >= startIdx; i-- {
+		result = append(result, rl.logs[i])
+	}
+
+	hasMore := page < totalPages
+
+	return result, total, hasMore
+}
+
+// GetTotalCount returns the total number of logs
+func (rl *RequestLogger) GetTotalCount() int {
+	rl.mu.RLock()
+	defer rl.mu.RUnlock()
+	return len(rl.logs)
 }
 
 // GetLogsByTimeRange returns logs within a time range
