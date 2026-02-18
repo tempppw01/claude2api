@@ -29,6 +29,7 @@ func MoudlesHandler(c *gin.Context) {
 	models := []map[string]interface{}{
 		{"id": "claude-3-7-sonnet-20250219"},
 		{"id": "claude-sonnet-4-20250514"},
+		{"id": "claude-sonnet-4-6-20260217"},
 		{"id": "claude-opus-4-20250514"},
 	}
 

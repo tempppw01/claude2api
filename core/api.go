@@ -169,8 +169,8 @@ func (c *Client) CreateConversation() (string, error) {
 		"name":                             "",
 		"include_conversation_preferences": true,
 	}
-	if c.model == "claude-sonnet-4-20250514" {
-		// 删除model
+	if c.model == "claude-sonnet-4-20250514" || c.model == "claude-sonnet-4-6-20260217" {
+		// 删除model - 免费模型不需要发送model字段
 		delete(requestBody, "model")
 	}
 
@@ -207,7 +207,7 @@ func (c *Client) SendMessage(conversationID string, message string, stream bool,
 	// Create request body with default attributes
 	requestBody := c.defaultAttrs
 	requestBody["prompt"] = message
-	if c.model != "claude-sonnet-4-20250514" {
+	if c.model != "claude-sonnet-4-20250514" && c.model != "claude-sonnet-4-6-20260217" {
 		requestBody["model"] = c.model
 	}
 	// Set up streaming response

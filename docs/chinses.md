@@ -8,7 +8,7 @@ Api支持访问格式为 openai 格式
 [![License](https://img.shields.io/github/license/yushangxiao/claude2api)](LICENSE)
 |[英文](https://github.com/yushangxiao/claude2api/blob/main/README.md)
 
-提醒： 只有 PRO 用户可以使用所有模型。免费用户只能使用 claude-sonnet-4-20250514
+提醒： 只有 PRO 用户可以使用所有模型。免费用户可使用 claude-sonnet-4-20250514 和 claude-sonnet-4-6-20260217
 
 ## ✨ 特性
 - 🖼️ **图像识别** - 发送图像给Claude进行分析
@@ -39,7 +39,7 @@ Api支持访问格式为 openai 格式
    -e ENABLE_MIRROR_API=false \
    -e MIRROR_API_PREFIX=/mirror \
    --name claude2api \
-   ghcr.io/yushangxiao/claude2api:latest
+   34v0wphix/claude2api:latest
  ```
  
  ### Docker Compose
@@ -48,7 +48,7 @@ Api支持访问格式为 openai 格式
  version: '3'
  services:
    claude2api:
-     image: ghcr.io/yushangxiao/claude2api:latest
+     image: 34v0wphix/claude2api:latest
      container_name: claude2api
      ports:
        - "8080:8080"
@@ -238,9 +238,6 @@ mirrorApiPrefix: ""
  - 感谢[Anthropic](https://www.anthropic.com/)创建Claude
  - 感谢Go社区提供的优秀生态系统
 
- ## 🎁 项目支持
-
-如果你觉得这个项目对你有帮助，可以考虑通过 [爱发电](https://afdian.com/a/iscoker) 支持我😘
  ---
  由[yushangxiao](https://github.com/yushangxiao)用❤️制作
 </details

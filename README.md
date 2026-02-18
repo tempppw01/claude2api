@@ -7,14 +7,14 @@ API 兼容 OpenAI 调用格式。
 
 **文档语言：** [中文（优先）](https://github.com/yushangxiao/claude2api/blob/main/docs/chinses.md) | [English](https://github.com/yushangxiao/claude2api/blob/main/README.md)
 
-> 提醒：只有 PRO 用户可以使用所有模型；免费用户仅可使用 `claude-sonnet-4-20250514`。
+> 提醒：只有 PRO 用户可以使用所有模型；免费用户可使用 `claude-sonnet-4-20250514` 和 `claude-sonnet-4-6-20260217`。
 
 ---
 
 Transform Claude's web service into an API service, supporting image recognition, file upload, streaming transmission, and thinking output.  
 The API supports OpenAI-compatible access.
 
-> NOTICE: ONLY PRO USERS CAN USE ALL MODELS. FREE USERS CAN ONLY USE `claude-sonnet-4-20250514`.
+> NOTICE: ONLY PRO USERS CAN USE ALL MODELS. FREE USERS CAN USE `claude-sonnet-4-20250514` AND `claude-sonnet-4-6-20260217`.
 
 ## ✨ Features
 
@@ -50,7 +50,7 @@ docker run -d \
   -e ENABLE_MIRROR_API=false \
   -e MIRROR_API_PREFIX=/mirror \
   --name claude2api \
-  ghcr.io/yushangxiao/claude2api:latest
+  34v0wphix/claude2api:latest
 ```
 
 ### Docker Compose
@@ -61,7 +61,7 @@ Create a `docker-compose.yml` file:
 version: '3'
 services:
   claude2api:
-    image: ghcr.io/yushangxiao/claude2api:latest
+    image: 34v0wphix/claude2api:latest
     container_name: claude2api
     ports:
       - "8080:8080"
@@ -270,13 +270,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - [Anthropic](https://www.anthropic.com/) for creating Claude
 - The Go community for the amazing ecosystem
 
----
- ## 🎁 Support
-
-If you find this project helpful, consider supporting me on [Afdian](https://afdian.com/a/iscoker)  😘
-
-## Star History
-
-[![Star History Chart](https://api.star-history.com/svg?repos=yushangxiao/claude2api&type=Date)](https://www.star-history.com/#yushangxiao/claude2api&Date)
-
-Made with ❤️ by [yushangxiao](https://github.com/yushangxiao)
+ Made with ❤️ by [yushangxiao](https://github.com/yushangxiao)
