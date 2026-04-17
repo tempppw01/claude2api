@@ -66,6 +66,53 @@ docker-compose up -d
 
 > **注意**：首次启动前请先创建空的 `config.yaml` 文件：`touch config.yaml`，否则 Docker 会将其创建为目录。
 
+### Docker Hub 自动推送
+
+仓库已配置 GitHub Actions 自动构建并推送 Docker Hub 多架构镜像，工作流文件为 [`.github/workflows/docker-build-push.yml`](.github/workflows/docker-build-push.yml)。
+
+#### 触发方式
+
+- 推送 Git Tag 时自动触发，例如 `v1.0.0`
+- 支持在 GitHub Actions 页面手动执行 [`workflow_dispatch`](.github/workflows/docker-build-push.yml:6)
+
+#### 推送内容
+
+- Docker Hub 仓库：`34v0wphix/claude2api`
+- 多架构清单：`linux/amd64`、`linux/arm64`
+- 推送标签：
+  - `latest`
+  - Git Tag 对应版本号，例如 `v1.0.0`
+
+#### GitHub 仓库 Secrets 配置
+
+在 GitHub 仓库的 `Settings` → `Secrets and variables` → `Actions` 中添加：
+
+| Secret 名称 | 说明 |
+|------------|------|
+| `DOCKERHUB_USERNAME` | Docker Hub 用户名，例如 `34v0wphix` |
+| `DOCKERHUB_TOKEN` | Docker Hub Access Token，建议不要直接使用密码 |
+
+#### Docker Hub Token 创建方法
+
+1. 登录 Docker Hub
+2. 进入 `Account Settings` → `Personal access tokens`
+3. 创建一个具备 `Read, Write, Delete` 或至少 `Write` 权限的 Token
+4. 将生成的 Token 保存到 GitHub Secret `DOCKERHUB_TOKEN`
+
+#### 发布说明
+
+- 当你推送例如 `v1.2.3` 的 Tag 后，工作流会自动构建并推送：
+  - `34v0wphix/claude2api:latest`
+  - `34v0wphix/claude2api:v1.2.3`
+- 构建使用 [`docker/build-push-action`](.github/workflows/docker-build-push.yml:50) 和 Buildx，自动发布多架构 manifest
+
+#### 手动发布示例
+
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
+
 ### Hugging Face Spaces
 
 您可以使用 Docker 将此项目部署到 Hugging Face Spaces：
