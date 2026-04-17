@@ -96,7 +96,8 @@ go build -o claude2api .
 
 ### 发布触发条件
 
-- 推送 Git Tag 时自动触发，例如 `v1.0.0`
+- 推送到 `main` 分支时自动触发
+- 推送 Git Tag 时也会触发，例如 `v1.0.0`
 - 支持在 GitHub Actions 页面手动触发 `workflow_dispatch`
 
 ### 发布内容
@@ -122,7 +123,17 @@ go build -o claude2api .
 3. 创建具备写权限的 Token
 4. 将 Token 保存到 GitHub Secret `DOCKERHUB_TOKEN`
 
-### 手动发布示例
+### 触发示例
+
+推送代码到 `main` 后会自动构建并发布 Docker Hub：
+
+```bash
+git add .
+git commit -m "chore: update project"
+git push origin main
+```
+
+如需发布明确版本，也可以继续使用 Tag：
 
 ```bash
 git tag v1.0.0
@@ -130,8 +141,8 @@ git push origin v1.0.0
 ```
 
 推送完成后，工作流会自动发布：
-- `34v0wphix/claude2api:latest`
-- `34v0wphix/claude2api:v1.0.0`
+- 分支推送：`34v0wphix/claude2api:latest` 与基于提交生成的版本标签
+- Tag 推送：`34v0wphix/claude2api:latest` 与对应版本标签，如 `34v0wphix/claude2api:v1.0.0`
 
 ## ⚙️ 配置说明
 
