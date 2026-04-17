@@ -46,45 +46,52 @@
 
         .grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
         }
-
+        
+        .grid-compact {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        
         .card {
             background: rgba(255,255,255,0.05);
             border-radius: 16px;
-            padding: 24px;
+            padding: 20px;
             border: 1px solid rgba(255,255,255,0.1);
             -webkit-backdrop-filter: blur(10px);
             backdrop-filter: blur(10px);
         }
-
+        
         .card-full {
             grid-column: 1 / -1;
         }
-
+        
         .card-header {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            margin-bottom: 20px;
+            margin-bottom: 16px;
         }
-
+        
         .card-header-left {
             display: flex;
             align-items: center;
         }
-
+        
         .card-icon {
-            width: 48px;
-            height: 48px;
-            border-radius: 12px;
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 24px;
-            margin-right: 16px;
+            font-size: 20px;
+            margin-right: 12px;
         }
 
         .card-icon.status { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
@@ -152,6 +159,121 @@
             border-radius: 20px;
             font-size: 0.85rem;
             color: #e0e0e0;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .model-tag .badge {
+            padding: 2px 6px;
+            border-radius: 10px;
+            font-size: 0.7rem;
+            font-weight: 500;
+        }
+        
+        .model-tag .badge.free {
+            background: rgba(67, 233, 123, 0.2);
+            color: #43e97b;
+        }
+        
+        .model-tag .badge.pro {
+            background: rgba(248, 113, 113, 0.2);
+            color: #f87171;
+        }
+        
+        /* Test message styles */
+        .test-section {
+            margin-top: 24px;
+        }
+        
+        .test-form {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+        
+        .test-row {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        
+        .test-label {
+            min-width: 80px;
+            font-weight: 500;
+            color: #e0e0e0;
+        }
+        
+        .test-select {
+            flex: 1;
+            min-width: 200px;
+            padding: 8px 12px;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 6px;
+            color: #e0e0e0;
+            font-size: 0.9rem;
+        }
+        
+        .test-select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .test-textarea {
+            width: 100%;
+            min-height: 100px;
+            padding: 12px 16px;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 8px;
+            color: #e0e0e0;
+            font-size: 0.9rem;
+            resize: vertical;
+        }
+        
+        .test-textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .test-options {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+        
+        .test-option {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #e0e0e0;
+            font-size: 0.9rem;
+        }
+        
+        .test-response {
+            margin-top: 16px;
+            padding: 16px;
+            background: rgba(0,0,0,0.2);
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.1);
+            min-height: 100px;
+            white-space: pre-wrap;
+            word-break: break-word;
+            color: #e0e0e0;
+            font-size: 0.9rem;
+            overflow-y: auto;
+        }
+        
+        .test-response.error {
+            border-color: #f87171;
+            color: #f87171;
+        }
+        
+        .test-response.loading {
+            color: #667eea;
+            font-style: italic;
         }
 
         .config-list {
@@ -733,8 +855,46 @@
                     <span style="color: #888;">加载中...</span>
                 </div>
             </div>
+        </div>
 
-            <!-- Config Card -->
+        <!-- Test Message Panel -->
+        <div class="test-section">
+            <div class="card card-full">
+                <div class="card-header">
+                    <div class="card-header-left">
+                        <div class="card-icon">💬</div>
+                        <div class="card-title">测试消息</div>
+                    </div>
+                    <button class="btn btn-primary" onclick="sendTestMessage()">发送消息</button>
+                </div>
+                <div class="test-form">
+                    <div class="test-row">
+                        <label class="test-label" for="testModel">模型</label>
+                        <select id="testModel" class="test-select">
+                            <!-- Options will be populated dynamically -->
+                        </select>
+                    </div>
+                    <div class="test-row">
+                        <label class="test-label" for="testMessage">消息内容</label>
+                        <textarea id="testMessage" class="test-textarea" placeholder="请输入要测试的消息内容...">你好，请介绍一下你自己。</textarea>
+                    </div>
+                    <div class="test-row">
+                        <div class="test-options">
+                            <div class="test-option">
+                                <input type="checkbox" id="testStream" checked>
+                                <label for="testStream">流式输出</label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="test-row">
+                        <label class="test-label">响应结果</label>
+                        <div id="testResponse" class="test-response">等待发送消息...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Config Card -->
             <div class="card card-full">
                 <div class="card-header">
                     <div class="card-header-left">
@@ -918,8 +1078,19 @@
                 
                 // Update model list
                 const modelList = document.getElementById('modelList');
-                modelList.innerHTML = data.models.map(m => 
-                    `<span class="model-tag">${m}</span>`
+                const testModelSelect = document.getElementById('testModel');
+                
+                modelList.innerHTML = data.models.map(m => {
+                    const isPro = m.toLowerCase().includes('opus');
+                    const badge = isPro
+                        ? '<span class="badge pro">Pro可用</span>'
+                        : '<span class="badge free">免费可用</span>';
+                    return `<span class="model-tag">${m}${badge}</span>`;
+                }).join('');
+                
+                // Update test model select options
+                testModelSelect.innerHTML = data.models.map(m =>
+                    `<option value="${m}">${m}</option>`
                 ).join('');
                 
                 // Update config
@@ -1287,6 +1458,119 @@
             loadStats();
             loadLogs();
         }, 30000);
+
+        // Test message function
+        let testController = null;
+        
+        async function sendTestMessage() {
+            const model = document.getElementById('testModel').value;
+            const message = document.getElementById('testMessage').value.trim();
+            const stream = document.getElementById('testStream').checked;
+            const responseElement = document.getElementById('testResponse');
+            const sendBtn = document.querySelector('.test-section .btn-primary');
+            
+            if (!message) {
+                alert('请输入测试消息内容');
+                return;
+            }
+            
+            if (!model) {
+                alert('请选择要测试的模型');
+                return;
+            }
+            
+            // Cancel previous request if exists
+            if (testController) {
+                testController.abort();
+            }
+            
+            // Reset response area
+            responseElement.textContent = '正在发送请求...';
+            responseElement.className = 'test-response loading';
+            sendBtn.disabled = true;
+            sendBtn.textContent = '发送中...';
+            
+            try {
+                testController = new AbortController();
+                const signal = testController.signal;
+                
+                const requestBody = {
+                    model: model,
+                    messages: [
+                        {
+                            role: "user",
+                            content: message
+                        }
+                    ],
+                    stream: stream
+                };
+                
+                const response = await fetch('/v1/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${currentConfig.api_key || ''}`
+                    },
+                    body: JSON.stringify(requestBody),
+                    signal: signal
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error?.message || `请求失败: ${response.status} ${response.statusText}`);
+                }
+                
+                if (stream) {
+                    const reader = response.body.getReader();
+                    const decoder = new TextDecoder();
+                    let responseText = '';
+                    
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
+                        
+                        const chunk = decoder.decode(value, { stream: true });
+                        const lines = chunk.split('\n');
+                        
+                        for (const line of lines) {
+                            if (line.startsWith('data: ')) {
+                                const data = line.substring(6);
+                                if (data === '[DONE]') continue;
+                                
+                                try {
+                                    const json = JSON.parse(data);
+                                    const content = json.choices[0]?.delta?.content;
+                                    if (content) {
+                                        responseText += content;
+                                        responseElement.textContent = responseText;
+                                        responseElement.scrollTop = responseElement.scrollHeight;
+                                    }
+                                } catch (e) {
+                                    console.error('Error parsing SSE chunk:', e);
+                                }
+                            }
+                        }
+                    }
+                    
+                    responseElement.className = 'test-response';
+                } else {
+                    const result = await response.json();
+                    const responseText = result.choices[0]?.message?.content || '没有返回内容';
+                    responseElement.textContent = responseText;
+                    responseElement.className = 'test-response';
+                }
+                
+            } catch (error) {
+                if (error.name !== 'AbortError') {
+                    responseElement.textContent = `请求出错: ${error.message}`;
+                    responseElement.className = 'test-response error';
+                }
+            } finally {
+                testController = null;
+                sendBtn.disabled = false;
+                sendBtn.textContent = '发送消息';
+            }
+        }
     </script>
 </body>
 </html>
