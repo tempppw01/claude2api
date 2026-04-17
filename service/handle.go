@@ -69,6 +69,7 @@ func ChatCompletionsHandler(c *gin.Context) {
 		})
 		return
 	}
+	c.Set("request_message_count", len(req.Messages))
 
 	// Process messages into prompt and extract images
 	processor := utils.NewChatRequestProcessor()
@@ -132,6 +133,7 @@ func MirrorChatHandler(c *gin.Context) {
 		})
 		return
 	}
+	c.Set("request_message_count", len(req.Messages))
 
 	// Process messages into prompt and extract images
 	processor := utils.NewChatRequestProcessor()
@@ -290,12 +292,28 @@ func cleanupConversation(client *core.Client, conversationID string, retry int) 
 // logRequest logs the request to the global request logger
 func logRequest(c *gin.Context, model string, sessionIdx int, inputTokens int, outputTokens int, success bool, startTime time.Time, errMsg string) {
 	duration := time.Since(startTime).Milliseconds()
-	
+
 	statusCode := http.StatusOK
 	if !success {
 		statusCode = http.StatusInternalServerError
 	}
-	
+
+	contextCount := 0
+	if rawMessages, exists := c.Get("request_message_count"); exists {
+		if count, ok := rawMessages.(int); ok {
+			contextCount = count
+		}
+	}
+
+	sessionLabel := "-"
+	if sessionIdx >= 0 {
+		sessionLabel = fmt.Sprintf("S%d", sessionIdx+1)
+	}
+
+	if sessionIdx >= 0 && sessionIdx < len(config.ConfigInstance.Sessions) {
+		sessionLabel = fmt.Sprintf("S%d / %s", sessionIdx+1, maskSessionKey(config.ConfigInstance.Sessions[sessionIdx].SessionKey))
+	}
+
 	log := logger.RequestLog{
 		Timestamp:    startTime,
 		Method:       c.Request.Method,
@@ -305,11 +323,35 @@ func logRequest(c *gin.Context, model string, sessionIdx int, inputTokens int, o
 		Duration:     duration,
 		Success:      success,
 		Error:        errMsg,
+		ErrorType:    classifyErrorType(errMsg),
 		SessionIdx:   sessionIdx,
+		SessionLabel: sessionLabel,
 		IsStreaming:  c.Query("stream") == "true" || c.GetBool("stream"),
+		ContextCount: contextCount,
 		InputTokens:  inputTokens,
 		OutputTokens: outputTokens,
 	}
-	
+
 	logger.GlobalRequestLogger.LogRequest(log)
+}
+
+func classifyErrorType(errMsg string) string {
+	if errMsg == "" {
+		return ""
+	}
+
+	lowerErr := strings.ToLower(errMsg)
+
+	switch {
+	case strings.Contains(lowerErr, "invalid request") || strings.Contains(lowerErr, "bind") || strings.Contains(lowerErr, "parse"):
+		return "请求解析失败"
+	case strings.Contains(lowerErr, "rate limit") || strings.Contains(lowerErr, "429") || strings.Contains(lowerErr, "retry-after"):
+		return "限流"
+	case strings.Contains(lowerErr, "auth") || strings.Contains(lowerErr, "unauthorized") || strings.Contains(lowerErr, "forbidden") || strings.Contains(lowerErr, "api key"):
+		return "认证失败"
+	case strings.Contains(lowerErr, "claude") || strings.Contains(lowerErr, "conversation") || strings.Contains(lowerErr, "send message"):
+		return "Claude 接口错误"
+	default:
+		return "未知错误"
+	}
 }

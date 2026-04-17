@@ -15,8 +15,11 @@ type RequestLog struct {
 	Duration     int64     `json:"duration_ms"` // milliseconds
 	Success      bool      `json:"success"`
 	Error        string    `json:"error,omitempty"`
+	ErrorType    string    `json:"error_type,omitempty"`
 	SessionIdx   int       `json:"session_idx"`
+	SessionLabel string    `json:"session_label,omitempty"`
 	IsStreaming  bool      `json:"is_streaming"`
+	ContextCount int       `json:"context_count"`
 	InputTokens  int       `json:"input_tokens"`
 	OutputTokens int       `json:"output_tokens"`
 }

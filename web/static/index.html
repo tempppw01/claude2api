@@ -11,372 +11,326 @@
             box-sizing: border-box;
         }
 
+        :root {
+            --bg-main: #101729;
+            --bg-panel: rgba(255,255,255,0.06);
+            --bg-panel-strong: rgba(255,255,255,0.1);
+            --border: rgba(255,255,255,0.1);
+            --text-main: #e8ecf3;
+            --text-sub: #9aa4b2;
+            --primary: #667eea;
+            --primary-2: #764ba2;
+            --success: #43e97b;
+            --danger: #f87171;
+            --warning: #fbbf24;
+        }
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            background: linear-gradient(135deg, #111827 0%, #16213e 100%);
             min-height: 100vh;
-            color: #e0e0e0;
+            color: var(--text-main);
         }
 
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 20px;
+        .app-shell {
+            display: flex;
+            min-height: 100vh;
         }
 
-        .header {
-            text-align: center;
-            padding: 30px 0;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
-            margin-bottom: 30px;
+        .sidebar {
+            width: 260px;
+            background: rgba(10, 15, 30, 0.88);
+            border-right: 1px solid var(--border);
+            padding: 24px 16px;
+            position: sticky;
+            top: 0;
+            height: 100vh;
+            backdrop-filter: blur(18px);
+            z-index: 20;
         }
 
-        .header h1 {
-            font-size: 2.5rem;
-            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+        .sidebar-brand {
+            margin-bottom: 24px;
+            padding: 0 8px 20px;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+        }
+
+        .sidebar-brand h1 {
+            font-size: 1.4rem;
+            background: linear-gradient(90deg, #8ea2ff 0%, #c89dff 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
         }
 
-        .header p {
-            color: #888;
-            margin-top: 10px;
+        .sidebar-brand p {
+            margin-top: 8px;
+            color: var(--text-sub);
+            font-size: 0.86rem;
+            line-height: 1.5;
+        }
+
+        .nav-group-title {
+            color: #7c8798;
+            font-size: 0.75rem;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            padding: 0 12px;
+            margin: 16px 0 8px;
+        }
+
+        .nav-menu {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            width: 100%;
+            border: none;
+            background: transparent;
+            color: var(--text-main);
+            padding: 12px 14px;
+            border-radius: 12px;
+            cursor: pointer;
+            text-align: left;
+            transition: all 0.2s ease;
+            font-size: 0.95rem;
+        }
+
+        .nav-item:hover {
+            background: rgba(255,255,255,0.06);
+        }
+
+        .nav-item.active {
+            background: linear-gradient(90deg, rgba(102,126,234,0.28) 0%, rgba(118,75,162,0.28) 100%);
+            border: 1px solid rgba(142, 162, 255, 0.28);
+        }
+
+        .nav-icon {
+            width: 20px;
+            text-align: center;
+        }
+
+        .main-content {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .container {
+            max-width: 1440px;
+            margin: 0 auto;
+            padding: 24px;
+        }
+
+        .topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .page-header h2 {
+            font-size: 1.8rem;
+            font-weight: 700;
+        }
+
+        .page-header p {
+            margin-top: 6px;
+            color: var(--text-sub);
+        }
+
+        .drawer-toggle {
+            display: none;
+            background: rgba(255,255,255,0.08);
+            border: 1px solid var(--border);
+            color: var(--text-main);
+            padding: 10px 14px;
+            border-radius: 10px;
+            cursor: pointer;
+        }
+
+        .section {
+            display: none;
+        }
+
+        .section.active {
+            display: block;
         }
 
         .grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
             gap: 16px;
-            margin-bottom: 24px;
+            margin-bottom: 20px;
         }
-        
-        .grid-compact {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 16px;
-            margin-bottom: 24px;
-        }
-        
+
         .card {
-            background: rgba(255,255,255,0.05);
-            border-radius: 16px;
+            background: var(--bg-panel);
+            border-radius: 18px;
             padding: 20px;
-            border: 1px solid rgba(255,255,255,0.1);
-            -webkit-backdrop-filter: blur(10px);
-            backdrop-filter: blur(10px);
+            border: 1px solid var(--border);
+            backdrop-filter: blur(12px);
+            box-shadow: 0 12px 32px rgba(0,0,0,0.18);
         }
-        
+
         .card-full {
-            grid-column: 1 / -1;
+            width: 100%;
         }
-        
+
         .card-header {
             display: flex;
             align-items: center;
             justify-content: space-between;
+            gap: 12px;
             margin-bottom: 16px;
         }
-        
+
         .card-header-left {
             display: flex;
             align-items: center;
+            gap: 12px;
         }
-        
+
         .card-icon {
             width: 40px;
             height: 40px;
-            border-radius: 10px;
+            border-radius: 12px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 20px;
-            margin-right: 12px;
+            font-size: 18px;
+            background: linear-gradient(135deg, rgba(102,126,234,0.9) 0%, rgba(118,75,162,0.9) 100%);
         }
 
         .card-icon.status { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
         .card-icon.models { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
         .card-icon.sessions { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
-        .card-icon.config { background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); }
-        .card-icon.stats { background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); }
-        .card-icon.logs { background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%); }
+        .card-icon.config { background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); color: #0b1321; }
+        .card-icon.stats { background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); color: #1b2235; }
+        .card-icon.logs { background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%); color: #1b2235; }
 
         .card-title {
-            font-size: 1.2rem;
+            font-size: 1.08rem;
             font-weight: 600;
         }
 
-        .status-indicator {
+        .kpi-card {
+            min-height: 132px;
             display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
+            flex-direction: column;
+            justify-content: space-between;
         }
 
-        .status-dot {
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            margin-right: 10px;
-            animation: pulse 2s infinite;
-        }
-
-        .status-dot.online { background: #4ade80; }
-        .status-dot.offline { background: #f87171; }
-
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
-        }
-
-        .status-text {
-            font-size: 1.1rem;
-            font-weight: 500;
-        }
-
-        .status-text.online { color: #4ade80; }
-        .status-text.offline { color: #f87171; }
-
-        .session-count {
-            font-size: 3rem;
+        .kpi-value {
+            font-size: 2rem;
             font-weight: 700;
-            text-align: center;
-            background: linear-gradient(90deg, #4facfe 0%, #00f2fe 100%);
+            line-height: 1;
+            margin-top: 8px;
+        }
+
+        .kpi-value.gradient {
+            background: linear-gradient(90deg, #7da2ff 0%, #9cf0ff 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
         }
 
+        .kpi-desc {
+            color: var(--text-sub);
+            font-size: 0.86rem;
+            margin-top: 10px;
+        }
+
+        .status-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+        }
+
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 999px;
+            animation: pulse 2s infinite;
+        }
+
+        .status-dot.online { background: #4ade80; }
+        .status-dot.offline { background: #f87171; }
+        .status-text.online { color: #4ade80; }
+        .status-text.offline { color: #f87171; }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.45; }
+        }
+
         .model-list {
             display: flex;
             flex-wrap: wrap;
-            gap: 8px;
-        }
-
-        .model-tag {
-            background: rgba(255,255,255,0.1);
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-size: 0.85rem;
-            color: #e0e0e0;
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-        }
-        
-        .model-tag .badge {
-            padding: 2px 6px;
-            border-radius: 10px;
-            font-size: 0.7rem;
-            font-weight: 500;
-        }
-        
-        .model-tag .badge.free {
-            background: rgba(67, 233, 123, 0.2);
-            color: #43e97b;
-        }
-        
-        .model-tag .badge.pro {
-            background: rgba(248, 113, 113, 0.2);
-            color: #f87171;
-        }
-        
-        /* Test message styles */
-        .test-section {
-            margin-top: 24px;
-        }
-        
-        .test-form {
-            display: flex;
-            flex-direction: column;
-            gap: 16px;
-        }
-        
-        .test-row {
-            display: flex;
-            gap: 16px;
-            flex-wrap: wrap;
-            align-items: center;
-        }
-        
-        .test-label {
-            min-width: 80px;
-            font-weight: 500;
-            color: #e0e0e0;
-        }
-        
-        .test-select {
-            flex: 1;
-            min-width: 200px;
-            padding: 8px 12px;
-            background: rgba(255,255,255,0.1);
-            border: 1px solid rgba(255,255,255,0.2);
-            border-radius: 6px;
-            color: #e0e0e0;
-            font-size: 0.9rem;
-        }
-        
-        .test-select:focus {
-            outline: none;
-            border-color: #667eea;
-        }
-        
-        .test-textarea {
-            width: 100%;
-            min-height: 100px;
-            padding: 12px 16px;
-            background: rgba(255,255,255,0.1);
-            border: 1px solid rgba(255,255,255,0.2);
-            border-radius: 8px;
-            color: #e0e0e0;
-            font-size: 0.9rem;
-            resize: vertical;
-        }
-        
-        .test-textarea:focus {
-            outline: none;
-            border-color: #667eea;
-        }
-        
-        .test-options {
-            display: flex;
-            align-items: center;
-            gap: 20px;
-        }
-        
-        .test-option {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            color: #e0e0e0;
-            font-size: 0.9rem;
-        }
-        
-        .test-response {
-            margin-top: 16px;
-            padding: 16px;
-            background: rgba(0,0,0,0.2);
-            border-radius: 8px;
-            border: 1px solid rgba(255,255,255,0.1);
-            min-height: 100px;
-            white-space: pre-wrap;
-            word-break: break-word;
-            color: #e0e0e0;
-            font-size: 0.9rem;
-            overflow-y: auto;
-        }
-        
-        .test-response.error {
-            border-color: #f87171;
-            color: #f87171;
-        }
-        
-        .test-response.loading {
-            color: #667eea;
-            font-style: italic;
-        }
-
-        .config-list {
-            list-style: none;
-        }
-
-        .config-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 12px 0;
-            border-bottom: 1px solid rgba(255,255,255,0.05);
-        }
-
-        .config-item:last-child {
-            border-bottom: none;
-        }
-
-        .config-key {
-            color: #888;
-            font-size: 0.9rem;
-        }
-
-        .config-value {
-            font-weight: 500;
-            color: #e0e0e0;
-        }
-
-        .config-value.editable {
-            background: rgba(255,255,255,0.1);
-            border: 1px solid rgba(255,255,255,0.2);
-            border-radius: 6px;
-            padding: 4px 8px;
-            width: 120px;
-            text-align: right;
-            color: #e0e0e0;
-            font-size: 0.9rem;
-        }
-
-        .config-value.editable:focus {
-            outline: none;
-            border-color: #667eea;
-        }
-
-        .config-toggle {
-            display: flex;
-            align-items: center;
             gap: 10px;
         }
 
-        .toggle-switch {
-            position: relative;
-            width: 50px;
-            height: 26px;
-            background: rgba(255,255,255,0.1);
-            border-radius: 13px;
-            cursor: pointer;
-            transition: background 0.3s;
+        .model-tag {
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.08);
+            padding: 8px 12px;
+            border-radius: 999px;
+            font-size: 0.85rem;
+            color: var(--text-main);
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
         }
 
-        .toggle-switch.active {
-            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+        .badge {
+            padding: 2px 8px;
+            border-radius: 999px;
+            font-size: 0.72rem;
+            font-weight: 600;
         }
 
-        .toggle-switch::after {
-            content: '';
-            position: absolute;
-            width: 22px;
-            height: 22px;
-            background: white;
-            border-radius: 50%;
-            top: 2px;
-            left: 2px;
-            transition: transform 0.3s;
+        .badge.free {
+            background: rgba(67,233,123,0.18);
+            color: var(--success);
         }
 
-        .toggle-switch.active::after {
-            transform: translateX(24px);
+        .badge.pro {
+            background: rgba(248,113,113,0.18);
+            color: var(--danger);
         }
 
         .btn {
-            padding: 10px 20px;
+            padding: 10px 16px;
             border: none;
-            border-radius: 8px;
+            border-radius: 10px;
             cursor: pointer;
             font-size: 0.9rem;
-            font-weight: 500;
-            transition: all 0.3s;
+            font-weight: 600;
+            transition: all 0.2s ease;
         }
 
         .btn-primary {
-            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(90deg, var(--primary) 0%, var(--primary-2) 100%);
             color: white;
         }
 
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        .btn-secondary {
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.12);
+            color: var(--text-main);
         }
 
         .btn-success {
             background: linear-gradient(90deg, #43e97b 0%, #38f9d7 100%);
-            color: #1a1a2e;
+            color: #10203a;
         }
 
         .btn-danger {
@@ -384,680 +338,779 @@
             color: white;
         }
 
-        .btn-secondary {
-            background: rgba(255,255,255,0.1);
-            color: #e0e0e0;
-            border: 1px solid rgba(255,255,255,0.2);
-        }
-
         .btn:disabled {
             opacity: 0.6;
             cursor: not-allowed;
         }
 
-        .btn.saving {
-            background: #888;
-        }
-
-        .btn.success {
-            background: linear-gradient(90deg, #43e97b 0%, #38f9d7 100%);
-            color: #1a1a2e;
-        }
-
-        .btn.error {
-            background: linear-gradient(90deg, #f87171 0%, #ef4444 100%);
-            color: white;
-        }
-
-        .session-table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        .session-table th,
-        .session-table td {
-            padding: 12px;
-            text-align: left;
-            border-bottom: 1px solid rgba(255,255,255,0.05);
-        }
-
-        .session-table th {
-            color: #888;
-            font-weight: 500;
-            font-size: 0.85rem;
-            text-transform: uppercase;
-        }
-
-        .session-table td {
-            font-size: 0.9rem;
-        }
-
-        .empty-state {
-            text-align: center;
-            color: #888;
-            padding: 40px;
-        }
-
-        .add-session-form {
-            display: flex;
-            gap: 10px;
-            margin-top: 20px;
-            flex-wrap: wrap;
-        }
-
-        .add-session-form input {
-            flex: 1;
-            min-width: 200px;
-            padding: 12px 16px;
-            border: 1px solid rgba(255,255,255,0.1);
-            border-radius: 8px;
-            background: rgba(255,255,255,0.05);
-            color: #e0e0e0;
-            font-size: 0.9rem;
-        }
-
-        .add-session-form input::placeholder {
-            color: #666;
-        }
-
-        .add-session-form input:focus {
-            outline: none;
-            border-color: #667eea;
-        }
-
-        .api-section {
-            margin-top: 30px;
-        }
-
-        .api-card {
-            background: rgba(255,255,255,0.05);
-            border-radius: 16px;
-            padding: 24px;
-            border: 1px solid rgba(255,255,255,0.1);
-        }
-
-        .api-title {
-            font-size: 1.2rem;
-            font-weight: 600;
-            margin-bottom: 20px;
-        }
-
-        .api-endpoint {
-            display: flex;
-            align-items: center;
-            padding: 12px;
-            background: rgba(0,0,0,0.2);
-            border-radius: 8px;
-            margin-bottom: 10px;
-        }
-
-        .api-method {
-            padding: 4px 10px;
-            border-radius: 4px;
-            font-size: 0.8rem;
-            font-weight: 600;
-            margin-right: 12px;
-        }
-
-        .api-method.get {
-            background: #22c55e;
-            color: white;
-        }
-
-        .api-method.post {
-            background: #3b82f6;
-            color: white;
-        }
-
-        .api-method.delete {
-            background: #ef4444;
-            color: white;
-        }
-
-        .api-path {
-            font-family: 'Monaco', 'Menlo', monospace;
-            color: #e0e0e0;
-        }
-
-        .api-desc {
-            margin-left: auto;
-            color: #888;
-            font-size: 0.85rem;
-        }
-
-        /* Stats styles */
-        .stats-grid {
+        .form-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
             gap: 16px;
         }
 
-        .stat-item {
-            text-align: center;
-            padding: 16px;
-            background: rgba(0,0,0,0.2);
-            border-radius: 12px;
-        }
-
-        .stat-value {
-            font-size: 2rem;
-            font-weight: 700;
-            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-
-        .stat-label {
-            font-size: 0.85rem;
-            color: #888;
-            margin-top: 4px;
-        }
-
-        .stat-value.success { background: linear-gradient(90deg, #43e97b 0%, #38f9d7 100%); -webkit-background-clip: text; background-clip: text; }
-        .stat-value.error { background: linear-gradient(90deg, #f87171 0%, #ef4444 100%); -webkit-background-clip: text; background-clip: text; }
-
-        /* Logs styles */
-        .logs-container {
-            max-height: 400px;
-            overflow-y: auto;
-            background: rgba(0,0,0,0.2);
-            border-radius: 8px;
-        }
-
-        .log-item {
+        .field {
             display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .field label,
+        .test-label {
+            color: var(--text-main);
+            font-weight: 600;
+            font-size: 0.92rem;
+        }
+
+        .field small,
+        .helper-text {
+            color: var(--text-sub);
+            font-size: 0.82rem;
+            line-height: 1.5;
+        }
+
+        .config-input,
+        .test-select,
+        .test-textarea,
+        .field input,
+        .field select,
+        .field textarea {
+            width: 100%;
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.14);
+            border-radius: 10px;
+            padding: 11px 12px;
+            color: var(--text-main);
+            font-size: 0.92rem;
+        }
+
+        .config-input:focus,
+        .test-select:focus,
+        .test-textarea:focus,
+        .field input:focus,
+        .field select:focus,
+        .field textarea:focus {
+            outline: none;
+            border-color: rgba(142,162,255,0.75);
+            box-shadow: 0 0 0 3px rgba(102,126,234,0.12);
+        }
+
+        .test-form {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .test-row {
+            display: grid;
+            grid-template-columns: 120px 1fr;
+            gap: 16px;
+            align-items: start;
+        }
+
+        .test-options {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
             align-items: center;
-            padding: 10px 16px;
-            border-bottom: 1px solid rgba(255,255,255,0.05);
-            font-size: 0.85rem;
         }
 
-        .log-item:last-child {
-            border-bottom: none;
-        }
-
-        .log-time {
-            color: #888;
-            margin-right: 12px;
-            font-family: 'Monaco', 'Menlo', monospace;
-            font-size: 0.8rem;
-        }
-
-        .log-status {
-            padding: 2px 8px;
-            border-radius: 4px;
-            font-size: 0.75rem;
-            margin-right: 12px;
-        }
-
-        .log-status.success {
-            background: rgba(67, 233, 123, 0.2);
-            color: #43e97b;
-        }
-
-        .log-status.error {
-            background: rgba(248, 113, 113, 0.2);
-            color: #f87171;
-        }
-
-        .log-model {
-            color: #667eea;
-            margin-right: 12px;
-            min-width: 180px;
-        }
-
-        .log-duration {
-            color: #888;
-            margin-left: auto;
-        }
-
-        .log-error {
-            color: #f87171;
-            font-size: 0.75rem;
-            max-width: 200px;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-            margin-right: 12px;
-            cursor: help;
-        }
-
-        .log-item-wrapper {
-            position: relative;
-        }
-
-        .log-item-wrapper:hover .log-error-tooltip {
-            display: block;
-        }
-
-        .log-error-tooltip {
-            display: none;
-            position: absolute;
-            top: 100%;
-            left: 0;
-            right: 0;
-            background: rgba(30, 30, 50, 0.98);
-            border: 1px solid rgba(255,255,255,0.1);
-            border-radius: 8px;
-            padding: 12px;
-            z-index: 100;
-            font-size: 0.8rem;
-            color: #f87171;
-            word-break: break-word;
-            max-height: 150px;
-            overflow-y: auto;
-        }
-
-        .logs-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 16px;
-        }
-
-        .logs-empty {
-            text-align: center;
-            color: #888;
-            padding: 40px;
-        }
-
-        .logs-collapsed .log-item:nth-child(n+11) {
-            display: none;
-        }
-
-        .logs-expand-btn {
-            text-align: center;
-            padding: 12px;
-            color: #667eea;
-            cursor: pointer;
-            font-size: 0.85rem;
-            border-top: 1px solid rgba(255,255,255,0.05);
-        }
-
-        .logs-expand-btn:hover {
-            background: rgba(102, 126, 234, 0.1);
-        }
-
-        .logs-pagination {
-            display: flex;
-            justify-content: center;
+        .test-option {
+            display: inline-flex;
             align-items: center;
             gap: 8px;
-            padding: 12px;
-            border-top: 1px solid rgba(255,255,255,0.05);
+            color: var(--text-main);
         }
 
-        .logs-pagination button {
-            padding: 6px 12px;
-            background: rgba(255,255,255,0.1);
-            border: 1px solid rgba(255,255,255,0.2);
-            border-radius: 6px;
-            color: #e0e0e0;
-            cursor: pointer;
-            font-size: 0.8rem;
+        .test-response {
+            min-height: 140px;
+            padding: 16px;
+            background: rgba(0,0,0,0.24);
+            border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.08);
+            color: var(--text-main);
+            white-space: pre-wrap;
+            word-break: break-word;
+            overflow: auto;
         }
 
-        .logs-pagination button:hover:not(:disabled) {
-            background: rgba(102, 126, 234, 0.3);
+        .test-response.loading {
+            color: #9db0ff;
         }
 
-        .logs-pagination button:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
+        .test-response.error {
+            color: var(--danger);
+            border-color: rgba(248,113,113,0.45);
         }
 
-        .logs-pagination .page-info {
-            color: #888;
-            font-size: 0.8rem;
-            min-width: 80px;
-            text-align: center;
-        }
-
-        .logs-toggle-bar {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 8px 16px;
-            background: rgba(0,0,0,0.3);
-            border-radius: 8px 8px 0 0;
-            font-size: 0.85rem;
-        }
-
-        .logs-toggle-bar .log-count {
-            color: #888;
-        }
-
-        .logs-toggle-bar .success-rate {
-            color: #43e97b;
-        }
-
-        /* Config section styles */
         .config-section {
-            margin-top: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
         }
 
         .config-row {
-            display: flex;
-            justify-content: space-between;
+            display: grid;
+            grid-template-columns: minmax(240px, 1fr) 220px;
+            gap: 16px;
             align-items: center;
-            padding: 12px 0;
-            border-bottom: 1px solid rgba(255,255,255,0.05);
+            padding-bottom: 14px;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
         }
 
         .config-row:last-child {
             border-bottom: none;
+            padding-bottom: 0;
         }
 
         .config-label {
             display: flex;
             flex-direction: column;
+            gap: 4px;
         }
 
         .config-label-text {
-            color: #e0e0e0;
-            font-weight: 500;
+            font-weight: 600;
         }
 
         .config-label-desc {
-            color: #666;
-            font-size: 0.8rem;
-            margin-top: 2px;
+            color: var(--text-sub);
+            font-size: 0.84rem;
         }
 
-        .config-input {
+        .toggle-switch {
+            position: relative;
+            width: 52px;
+            height: 28px;
             background: rgba(255,255,255,0.1);
-            border: 1px solid rgba(255,255,255,0.2);
-            border-radius: 6px;
-            padding: 8px 12px;
-            color: #e0e0e0;
-            font-size: 0.9rem;
-            width: 200px;
+            border-radius: 999px;
+            cursor: pointer;
+            transition: all 0.25s ease;
         }
 
-        .config-input:focus {
-            outline: none;
-            border-color: #667eea;
+        .toggle-switch::after {
+            content: '';
+            width: 22px;
+            height: 22px;
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            border-radius: 999px;
+            background: white;
+            transition: all 0.25s ease;
         }
 
-        .save-all-btn {
-            margin-top: 16px;
+        .toggle-switch.active {
+            background: linear-gradient(90deg, var(--primary) 0%, var(--primary-2) 100%);
+        }
+
+        .toggle-switch.active::after {
+            transform: translateX(24px);
+        }
+
+        .table-wrap {
+            overflow-x: auto;
+            background: rgba(0,0,0,0.18);
+            border-radius: 14px;
+            border: 1px solid rgba(255,255,255,0.06);
+        }
+
+        table {
             width: 100%;
+            border-collapse: collapse;
+            min-width: 920px;
+        }
+
+        th,
+        td {
+            padding: 12px 14px;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+            text-align: left;
+            vertical-align: top;
+        }
+
+        th {
+            color: var(--text-sub);
+            font-size: 0.8rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            background: rgba(255,255,255,0.03);
+        }
+
+        td {
+            font-size: 0.9rem;
+        }
+
+        .empty-state {
+            text-align: center;
+            color: var(--text-sub);
+            padding: 40px 20px;
+        }
+
+        .status-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 5px 10px;
+            border-radius: 999px;
+            font-size: 0.78rem;
+            font-weight: 700;
+        }
+
+        .status-pill.success {
+            background: rgba(67,233,123,0.16);
+            color: var(--success);
+        }
+
+        .status-pill.error {
+            background: rgba(248,113,113,0.16);
+            color: var(--danger);
+        }
+
+        .error-type-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 999px;
+            background: rgba(255,255,255,0.08);
+            color: #ffd98c;
+            font-size: 0.78rem;
+        }
+
+        .mono {
+            font-family: 'Consolas', 'Monaco', monospace;
+        }
+
+        .subgrid {
+            display: grid;
+            grid-template-columns: 1.4fr 1fr;
+            gap: 16px;
+        }
+
+        .section-stack {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .stats-toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+            margin-bottom: 14px;
+        }
+
+        .toolbar-meta {
+            color: var(--text-sub);
+            font-size: 0.88rem;
+        }
+
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            margin-top: 16px;
+        }
+
+        .page-info {
+            min-width: 90px;
+            text-align: center;
+            color: var(--text-sub);
+            font-size: 0.86rem;
+        }
+
+        .api-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .api-endpoint {
+            display: grid;
+            grid-template-columns: 82px minmax(180px, 260px) 1fr;
+            gap: 12px;
+            align-items: center;
+            background: rgba(0,0,0,0.2);
+            border-radius: 10px;
+            padding: 12px;
+        }
+
+        .api-method {
+            padding: 4px 10px;
+            border-radius: 999px;
+            font-size: 0.78rem;
+            font-weight: 700;
+            text-align: center;
+        }
+
+        .api-method.get { background: #22c55e; color: white; }
+        .api-method.post { background: #3b82f6; color: white; }
+        .api-method.delete { background: #ef4444; color: white; }
+
+        .api-path {
+            font-family: 'Consolas', 'Monaco', monospace;
+            color: var(--text-main);
+        }
+
+        .api-desc {
+            color: var(--text-sub);
+            font-size: 0.86rem;
+        }
+
+        .mobile-overlay {
+            display: none;
+        }
+
+        @media (max-width: 1100px) {
+            .subgrid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 900px) {
+            .sidebar {
+                position: fixed;
+                left: -280px;
+                transition: left 0.25s ease;
+                width: 260px;
+            }
+
+            .sidebar.open {
+                left: 0;
+            }
+
+            .drawer-toggle {
+                display: inline-flex;
+            }
+
+            .mobile-overlay {
+                display: none;
+                position: fixed;
+                inset: 0;
+                background: rgba(0,0,0,0.45);
+                z-index: 10;
+            }
+
+            .mobile-overlay.show {
+                display: block;
+            }
+
+            .test-row,
+            .config-row {
+                grid-template-columns: 1fr;
+            }
+
+            .container {
+                padding: 18px;
+            }
+
+            .api-endpoint {
+                grid-template-columns: 1fr;
+                align-items: flex-start;
+            }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>🚀 Claude2API</h1>
-            <p>将 Claude 网页服务转为 API 服务</p>
-        </div>
-
-        <div class="grid">
-            <!-- Status Card -->
-            <div class="card">
-                <div class="card-header">
-                    <div class="card-header-left">
-                        <div class="card-icon status">📊</div>
-                        <div class="card-title">服务状态</div>
-                    </div>
-                </div>
-                <div class="status-indicator">
-                    <div class="status-dot online" id="statusDot"></div>
-                    <span class="status-text online" id="statusText">运行中</span>
-                </div>
+    <div class="mobile-overlay" id="mobileOverlay" onclick="toggleDrawer(false)"></div>
+    <div class="app-shell">
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-brand">
+                <h1>🚀 Claude2API</h1>
+                <p>管理 Claude API 服务、会话配置、调试测试与请求统计。</p>
             </div>
 
-            <!-- Session Count Card -->
-            <div class="card">
-                <div class="card-header">
-                    <div class="card-header-left">
-                        <div class="card-icon sessions">🔑</div>
-                        <div class="card-title">Session 数量</div>
-                    </div>
-                </div>
-                <div class="session-count" id="sessionCount">-</div>
+            <div class="nav-group-title">功能导航</div>
+            <div class="nav-menu">
+                <button class="nav-item active" data-section="overview" onclick="showSection('overview')">
+                    <span class="nav-icon">🏠</span>
+                    <span>总览</span>
+                </button>
+                <button class="nav-item" data-section="debug" onclick="showSection('debug')">
+                    <span class="nav-icon">🧪</span>
+                    <span>调试测试</span>
+                </button>
+                <button class="nav-item" data-section="config" onclick="showSection('config')">
+                    <span class="nav-icon">⚙️</span>
+                    <span>配置管理</span>
+                </button>
+                <button class="nav-item" data-section="sessions" onclick="showSection('sessions')">
+                    <span class="nav-icon">🔐</span>
+                    <span>Session 管理</span>
+                </button>
+                <button class="nav-item" data-section="stats" onclick="showSection('stats')">
+                    <span class="nav-icon">📈</span>
+                    <span>请求统计</span>
+                </button>
             </div>
+        </aside>
 
-            <!-- Stats Card -->
-            <div class="card">
-                <div class="card-header">
-                    <div class="card-header-left">
-                        <div class="card-icon stats">📈</div>
-                        <div class="card-title">请求统计</div>
+        <main class="main-content">
+            <div class="container">
+                <div class="topbar">
+                    <div class="page-header">
+                        <h2 id="pageTitle">总览</h2>
+                        <p id="pageDescription">查看服务状态、模型列表与接口概览。</p>
                     </div>
+                    <button class="drawer-toggle" onclick="toggleDrawer(true)">☰ 菜单</button>
                 </div>
-                <div class="stats-grid">
-                    <div class="stat-item">
-                        <div class="stat-value" id="totalRequests">0</div>
-                        <div class="stat-label">总请求</div>
-                    </div>
-                    <div class="stat-item">
-                        <div class="stat-value success" id="successRate">0%</div>
-                        <div class="stat-label">成功率</div>
-                    </div>
-                    <div class="stat-item">
-                        <div class="stat-value" id="rpm">0</div>
-                        <div class="stat-label">RPM</div>
-                    </div>
-                </div>
-            </div>
 
-            <!-- Models Card -->
-            <div class="card">
-                <div class="card-header">
-                    <div class="card-header-left">
-                        <div class="card-icon models">🤖</div>
-                        <div class="card-title">可用模型</div>
-                    </div>
-                </div>
-                <div class="model-list" id="modelList">
-                    <span style="color: #888;">加载中...</span>
-                </div>
-            </div>
-        </div>
+                <section class="section active" id="section-overview">
+                    <div class="grid">
+                        <div class="card kpi-card">
+                            <div class="card-header-left">
+                                <div class="card-icon status">📊</div>
+                                <div>
+                                    <div class="card-title">服务状态</div>
+                                    <div class="kpi-desc">当前面板连接状态</div>
+                                </div>
+                            </div>
+                            <div class="status-indicator">
+                                <span class="status-dot online" id="statusDot"></span>
+                                <span class="status-text online" id="statusText">运行中</span>
+                            </div>
+                        </div>
 
-        <!-- Test Message Panel -->
-        <div class="test-section">
-            <div class="card card-full">
-                <div class="card-header">
-                    <div class="card-header-left">
-                        <div class="card-icon">💬</div>
-                        <div class="card-title">测试消息</div>
+                        <div class="card kpi-card">
+                            <div class="card-header-left">
+                                <div class="card-icon sessions">🔑</div>
+                                <div>
+                                    <div class="card-title">Session 数量</div>
+                                    <div class="kpi-desc">当前可用 Claude 会话数</div>
+                                </div>
+                            </div>
+                            <div class="kpi-value gradient" id="sessionCount">-</div>
+                        </div>
+
+                        <div class="card kpi-card">
+                            <div class="card-header-left">
+                                <div class="card-icon stats">📈</div>
+                                <div>
+                                    <div class="card-title">总请求</div>
+                                    <div class="kpi-desc">累计处理请求数量</div>
+                                </div>
+                            </div>
+                            <div class="kpi-value gradient" id="totalRequests">0</div>
+                        </div>
+
+                        <div class="card kpi-card">
+                            <div class="card-header-left">
+                                <div class="card-icon logs">✅</div>
+                                <div>
+                                    <div class="card-title">成功率</div>
+                                    <div class="kpi-desc">所有请求的历史成功率</div>
+                                </div>
+                            </div>
+                            <div class="kpi-value gradient" id="successRate">0%</div>
+                        </div>
                     </div>
-                    <button class="btn btn-primary" onclick="sendTestMessage()">发送消息</button>
-                </div>
-                <div class="test-form">
-                    <div class="test-row">
-                        <label class="test-label" for="testModel">模型</label>
-                        <select id="testModel" class="test-select">
-                            <!-- Options will be populated dynamically -->
-                        </select>
-                    </div>
-                    <div class="test-row">
-                        <label class="test-label" for="testMessage">消息内容</label>
-                        <textarea id="testMessage" class="test-textarea" placeholder="请输入要测试的消息内容...">你好，请介绍一下你自己。</textarea>
-                    </div>
-                    <div class="test-row">
-                        <div class="test-options">
-                            <div class="test-option">
-                                <input type="checkbox" id="testStream" checked>
-                                <label for="testStream">流式输出</label>
+
+                    <div class="subgrid">
+                        <div class="section-stack">
+                            <div class="card card-full">
+                                <div class="card-header">
+                                    <div class="card-header-left">
+                                        <div class="card-icon models">🤖</div>
+                                        <div class="card-title">可用模型</div>
+                                    </div>
+                                </div>
+                                <div class="model-list" id="modelList">
+                                    <span style="color:#9aa4b2;">加载中...</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="section-stack">
+                            <div class="card card-full">
+                                <div class="card-header">
+                                    <div class="card-header-left">
+                                        <div class="card-icon logs">📡</div>
+                                        <div class="card-title">接口概览</div>
+                                    </div>
+                                </div>
+                                <div class="api-list">
+                                    <div class="api-endpoint">
+                                        <span class="api-method post">POST</span>
+                                        <span class="api-path">/v1/chat/completions</span>
+                                        <div class="api-desc">聊天补全接口（OpenAI 兼容）</div>
+                                    </div>
+                                    <div class="api-endpoint">
+                                        <span class="api-method get">GET</span>
+                                        <span class="api-path">/v1/models</span>
+                                        <div class="api-desc">获取模型列表</div>
+                                    </div>
+                                    <div class="api-endpoint">
+                                        <span class="api-method get">GET</span>
+                                        <span class="api-path">/admin-api/logs</span>
+                                        <div class="api-desc">获取请求明细日志</div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
-                    <div class="test-row">
-                        <label class="test-label">响应结果</label>
-                        <div id="testResponse" class="test-response">等待发送消息...</div>
+                </section>
+
+                <section class="section" id="section-debug">
+                    <div class="card card-full">
+                        <div class="card-header">
+                            <div class="card-header-left">
+                                <div class="card-icon">💬</div>
+                                <div class="card-title">测试消息</div>
+                            </div>
+                            <button class="btn btn-primary" id="sendTestBtn" onclick="sendTestMessage()">发送消息</button>
+                        </div>
+
+                        <div class="test-form">
+                            <div class="test-row">
+                                <label class="test-label" for="testModel">测试模型</label>
+                                <div class="field">
+                                    <select id="testModel" class="test-select"></select>
+                                    <small>模型列表自动同步自当前服务状态。</small>
+                                </div>
+                            </div>
+
+                            <div class="test-row">
+                                <label class="test-label" for="testApiKey">API Key</label>
+                                <div class="field">
+                                    <input type="text" id="testApiKey" placeholder="输入真实 API Key 以便测试接口">
+                                    <small>测试接口需要真实 API Key；这里不会自动使用已脱敏的管理页配置值。</small>
+                                </div>
+                            </div>
+
+                            <div class="test-row">
+                                <label class="test-label" for="testMessage">消息内容</label>
+                                <div class="field">
+                                    <textarea id="testMessage" class="test-textarea" placeholder="请输入要测试的消息内容...">你好，请介绍一下你自己。</textarea>
+                                </div>
+                            </div>
+
+                            <div class="test-row">
+                                <label class="test-label">请求选项</label>
+                                <div class="test-options">
+                                    <label class="test-option"><input type="checkbox" id="testStream"> 流式输出</label>
+                                </div>
+                            </div>
+
+                            <div class="test-row">
+                                <label class="test-label">响应结果</label>
+                                <div id="testResponse" class="test-response">等待发送测试消息...</div>
+                            </div>
+                        </div>
                     </div>
-                </div>
+                </section>
+
+                <section class="section" id="section-config">
+                    <div class="card card-full">
+                        <div class="card-header">
+                            <div class="card-header-left">
+                                <div class="card-icon config">⚙️</div>
+                                <div class="card-title">配置管理</div>
+                            </div>
+                        </div>
+
+                        <div class="config-section">
+                            <div class="config-row">
+                                <div class="config-label">
+                                    <span class="config-label-text">自动删除对话</span>
+                                    <span class="config-label-desc">请求完成后自动删除 Claude 对话</span>
+                                </div>
+                                <div class="toggle-switch" id="toggleChatDelete" onclick="toggleConfig('chat_delete')"></div>
+                            </div>
+
+                            <div class="config-row">
+                                <div class="config-label">
+                                    <span class="config-label-text">禁用角色前缀</span>
+                                    <span class="config-label-desc">不添加 User/Assistant 前缀</span>
+                                </div>
+                                <div class="toggle-switch" id="toggleNoRolePrefix" onclick="toggleConfig('no_role_prefix')"></div>
+                            </div>
+
+                            <div class="config-row">
+                                <div class="config-label">
+                                    <span class="config-label-text">禁用 Artifacts</span>
+                                    <span class="config-label-desc">在提示词中禁用 Artifacts 功能</span>
+                                </div>
+                                <div class="toggle-switch" id="toggleDisableArtifacts" onclick="toggleConfig('prompt_disable_artifacts')"></div>
+                            </div>
+
+                            <div class="config-row">
+                                <div class="config-label">
+                                    <span class="config-label-text">启用镜像 API</span>
+                                    <span class="config-label-desc">允许通过自定义前缀访问 API</span>
+                                </div>
+                                <div class="toggle-switch" id="toggleMirrorApi" onclick="toggleConfig('enable_mirror_api')"></div>
+                            </div>
+
+                            <div class="config-row">
+                                <div class="config-label">
+                                    <span class="config-label-text">镜像 API 前缀</span>
+                                    <span class="config-label-desc">镜像 API 的 URL 前缀</span>
+                                </div>
+                                <input type="text" class="config-input" id="mirrorApiPrefix" placeholder="/mirror">
+                            </div>
+
+                            <div class="config-row">
+                                <div class="config-label">
+                                    <span class="config-label-text">最大上下文长度</span>
+                                    <span class="config-label-desc">超过此长度将使用文件存储上下文</span>
+                                </div>
+                                <input type="number" class="config-input" id="maxChatHistoryLength" placeholder="10000">
+                            </div>
+
+                            <div class="config-row">
+                                <div class="config-label">
+                                    <span class="config-label-text">API Key</span>
+                                    <span class="config-label-desc">访问 API 的认证密钥；留空表示不修改</span>
+                                </div>
+                                <input type="text" class="config-input" id="apiKeyInput" placeholder="输入新的 API Key">
+                            </div>
+
+                            <div class="config-row">
+                                <div class="config-label">
+                                    <span class="config-label-text">代理地址</span>
+                                    <span class="config-label-desc">HTTP 代理 URL（可选）</span>
+                                </div>
+                                <input type="text" class="config-input" id="proxyInput" placeholder="http://proxy:8080">
+                            </div>
+                        </div>
+
+                        <button class="btn btn-primary" style="margin-top:16px; width:100%;" onclick="saveAllConfig()">保存所有配置</button>
+                    </div>
+                </section>
+
+                <section class="section" id="section-sessions">
+                    <div class="card card-full">
+                        <div class="card-header">
+                            <div class="card-header-left">
+                                <div class="card-icon sessions">🔐</div>
+                                <div class="card-title">Session 管理</div>
+                            </div>
+                            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                                <button class="btn btn-secondary" onclick="exportSessions('csv')">导出 CSV</button>
+                                <button class="btn btn-secondary" onclick="exportSessions('txt')">导出 TXT</button>
+                            </div>
+                        </div>
+
+                        <div class="table-wrap">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th style="width:70px;">#</th>
+                                        <th>Session Key</th>
+                                        <th>Org ID</th>
+                                        <th style="width:180px;">操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="sessionTableBody">
+                                    <tr><td colspan="4" class="empty-state">加载中...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="form-grid" style="margin-top:16px;">
+                            <div class="field">
+                                <label for="newSessionKey">新的 Session Key</label>
+                                <input type="text" id="newSessionKey" placeholder="输入新的 Session Key (sk-ant-sid...)">
+                            </div>
+                            <div class="field">
+                                <label for="newOrgId">Org ID</label>
+                                <input type="text" id="newOrgId" placeholder="Org ID (可选)">
+                            </div>
+                        </div>
+
+                        <button class="btn btn-primary" style="margin-top:16px;" onclick="addSession()">添加 Session</button>
+                    </div>
+                </section>
+
+                <section class="section" id="section-stats">
+                    <div class="grid">
+                        <div class="card kpi-card">
+                            <div class="card-header-left">
+                                <div class="card-icon stats">📈</div>
+                                <div>
+                                    <div class="card-title">总请求</div>
+                                    <div class="kpi-desc">所有历史请求累计</div>
+                                </div>
+                            </div>
+                            <div class="kpi-value gradient" id="statsTotalRequests">0</div>
+                        </div>
+                        <div class="card kpi-card">
+                            <div class="card-header-left">
+                                <div class="card-icon">✅</div>
+                                <div>
+                                    <div class="card-title">成功率</div>
+                                    <div class="kpi-desc">请求成功百分比</div>
+                                </div>
+                            </div>
+                            <div class="kpi-value gradient" id="statsSuccessRate">0%</div>
+                        </div>
+                        <div class="card kpi-card">
+                            <div class="card-header-left">
+                                <div class="card-icon">⚡</div>
+                                <div>
+                                    <div class="card-title">RPM</div>
+                                    <div class="kpi-desc">每分钟请求数</div>
+                                </div>
+                            </div>
+                            <div class="kpi-value gradient" id="rpm">0</div>
+                        </div>
+                        <div class="card kpi-card">
+                            <div class="card-header-left">
+                                <div class="card-icon">⏱️</div>
+                                <div>
+                                    <div class="card-title">平均耗时</div>
+                                    <div class="kpi-desc">请求平均耗时</div>
+                                </div>
+                            </div>
+                            <div class="kpi-value gradient" id="avgDuration">0ms</div>
+                        </div>
+                    </div>
+
+                    <div class="card card-full">
+                        <div class="stats-toolbar">
+                            <div>
+                                <div class="card-title">请求统计明细</div>
+                                <div class="toolbar-meta">展示时间、失败类型、上下文数、请求 Session、模型、耗时与 Token 信息</div>
+                            </div>
+                            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                                <span class="toolbar-meta">共 <span id="totalLogsCount">0</span> 条记录</span>
+                                <button class="btn btn-secondary" onclick="clearLogs()">清空日志</button>
+                            </div>
+                        </div>
+
+                        <div class="table-wrap">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>时间</th>
+                                        <th>状态</th>
+                                        <th>失败类型</th>
+                                        <th>上下文数</th>
+                                        <th>请求 Session</th>
+                                        <th>模型</th>
+                                        <th>耗时</th>
+                                        <th>Tokens</th>
+                                        <th>错误详情</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="logsTableBody">
+                                    <tr><td colspan="9" class="empty-state">暂无请求记录</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="pagination" id="logsPagination" style="display:none;">
+                            <button class="btn btn-secondary" onclick="prevLogsPage()" id="prevLogsBtn">上一页</button>
+                            <span class="page-info" id="logsPageInfo">1 / 1</span>
+                            <button class="btn btn-secondary" onclick="nextLogsPage()" id="nextLogsBtn">下一页</button>
+                        </div>
+                    </div>
+                </section>
             </div>
-        </div>
-
-        <!-- Config Card -->
-            <div class="card card-full">
-                <div class="card-header">
-                    <div class="card-header-left">
-                        <div class="card-icon config">⚙️</div>
-                        <div class="card-title">配置设置</div>
-                    </div>
-                </div>
-                <div class="config-section">
-                    <div class="config-row">
-                        <div class="config-label">
-                            <span class="config-label-text">自动删除对话</span>
-                            <span class="config-label-desc">请求完成后自动删除 Claude 对话</span>
-                        </div>
-                        <div class="toggle-switch active" id="toggleChatDelete" onclick="toggleConfig('chat_delete')"></div>
-                    </div>
-                    <div class="config-row">
-                        <div class="config-label">
-                            <span class="config-label-text">禁用角色前缀</span>
-                            <span class="config-label-desc">不添加 User/Assistant 前缀</span>
-                        </div>
-                        <div class="toggle-switch" id="toggleNoRolePrefix" onclick="toggleConfig('no_role_prefix')"></div>
-                    </div>
-                    <div class="config-row">
-                        <div class="config-label">
-                            <span class="config-label-text">禁用 Artifacts</span>
-                            <span class="config-label-desc">在提示词中禁用 Artifacts 功能</span>
-                        </div>
-                        <div class="toggle-switch" id="toggleDisableArtifacts" onclick="toggleConfig('prompt_disable_artifacts')"></div>
-                    </div>
-                    <div class="config-row">
-                        <div class="config-label">
-                            <span class="config-label-text">启用镜像 API</span>
-                            <span class="config-label-desc">允许通过自定义前缀访问 API</span>
-                        </div>
-                        <div class="toggle-switch" id="toggleMirrorApi" onclick="toggleConfig('enable_mirror_api')"></div>
-                    </div>
-                    <div class="config-row">
-                        <div class="config-label">
-                            <span class="config-label-text">镜像 API 前缀</span>
-                            <span class="config-label-desc">镜像 API 的 URL 前缀</span>
-                        </div>
-                        <input type="text" class="config-input" id="mirrorApiPrefix" placeholder="/mirror">
-                    </div>
-                    <div class="config-row">
-                        <div class="config-label">
-                            <span class="config-label-text">最大上下文长度</span>
-                            <span class="config-label-desc">超过此长度将使用文件存储上下文</span>
-                        </div>
-                        <input type="number" class="config-input" id="maxChatHistoryLength" placeholder="10000">
-                    </div>
-                    <div class="config-row">
-                        <div class="config-label">
-                            <span class="config-label-text">API Key</span>
-                            <span class="config-label-desc">访问 API 的认证密钥</span>
-                        </div>
-                        <input type="text" class="config-input" id="apiKeyInput" placeholder="输入新的 API Key">
-                    </div>
-                    <div class="config-row">
-                        <div class="config-label">
-                            <span class="config-label-text">代理地址</span>
-                            <span class="config-label-desc">HTTP 代理 URL（可选）</span>
-                        </div>
-                        <input type="text" class="config-input" id="proxyInput" placeholder="http://proxy:8080">
-                    </div>
-                    <button class="btn btn-primary save-all-btn" onclick="saveAllConfig()">保存所有配置</button>
-                </div>
-            </div>
-
-            <!-- Session Management Card -->
-            <div class="card card-full">
-                <div class="card-header">
-                    <div class="card-header-left">
-                        <div class="card-icon sessions">🔐</div>
-                        <div class="card-title">Session 管理</div>
-                    </div>
-                    <div>
-                        <button class="btn btn-secondary" onclick="exportSessions('csv')" style="margin-right: 8px;">导出 CSV</button>
-                        <button class="btn btn-secondary" onclick="exportSessions('txt')">导出 TXT</button>
-                    </div>
-                </div>
-                <div id="sessionTableContainer">
-                    <table class="session-table">
-                        <thead>
-                            <tr>
-                                <th style="width: 50px;">#</th>
-                                <th>Session Key</th>
-                                <th>Org ID</th>
-                                <th style="width: 180px;">操作</th>
-                            </tr>
-                        </thead>
-                        <tbody id="sessionTableBody">
-                            <tr>
-                                <td colspan="4" class="empty-state">加载中...</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-                <div class="add-session-form">
-                    <input type="text" id="newSessionKey" placeholder="输入新的 Session Key (sk-ant-sid...)">
-                    <input type="text" id="newOrgId" placeholder="Org ID (可选)">
-                    <button class="btn btn-primary" onclick="addSession()">添加 Session</button>
-                </div>
-            </div>
-
-            <!-- Request Logs Card -->
-            <div class="card card-full">
-                <div class="card-header">
-                    <div class="card-header-left">
-                        <div class="card-icon logs">📋</div>
-                        <div class="card-title">请求日志</div>
-                    </div>
-                    <button class="btn btn-secondary" onclick="clearLogs()">清空日志</button>
-                </div>
-                <div class="logs-toggle-bar" id="logsToggleBar" style="display: none;">
-                    <span class="log-count">共 <span id="totalLogsCount">0</span> 条记录</span>
-                    <span class="success-rate">历史成功率: <span id="historicalSuccessRate">0%</span></span>
-                </div>
-                <div class="logs-container" id="logsContainer">
-                    <div class="logs-empty">暂无请求记录</div>
-                </div>
-                <div class="logs-pagination" id="logsPagination" style="display: none;">
-                    <button onclick="prevLogsPage()" id="prevLogsBtn">上一页</button>
-                    <span class="page-info" id="logsPageInfo">1 / 1</span>
-                    <button onclick="nextLogsPage()" id="nextLogsBtn">下一页</button>
-                </div>
-            </div>
-        </div>
-
-        <div class="api-section">
-            <div class="api-card">
-                <div class="api-title">📡 API 端点</div>
-                
-                <div class="api-endpoint">
-                    <span class="api-method post">POST</span>
-                    <span class="api-path">/v1/chat/completions</span>
-                    <div class="api-desc">聊天补全接口 (OpenAI 兼容)</div>
-                </div>
-
-                <div class="api-endpoint">
-                    <span class="api-method get">GET</span>
-                    <span class="api-path">/v1/models</span>
-                    <div class="api-desc">获取可用模型列表</div>
-                </div>
-
-                <div class="api-endpoint">
-                    <span class="api-method get">GET</span>
-                    <span class="api-path">/admin-api/status</span>
-                    <div class="api-desc">获取服务状态</div>
-                </div>
-
-                <div class="api-endpoint">
-                    <span class="api-method get">GET</span>
-                    <span class="api-path">/admin-api/stats</span>
-                    <div class="api-desc">获取请求统计</div>
-                </div>
-
-                <div class="api-endpoint">
-                    <span class="api-method get">GET</span>
-                    <span class="api-path">/admin-api/logs</span>
-                    <div class="api-desc">获取请求日志</div>
-                </div>
-            </div>
-        </div>
+        </main>
     </div>
 
     <script>
@@ -1067,53 +1120,120 @@
         let logsTotalCount = 0;
         let logsHasMore = false;
         const logsPageSize = 10;
+        let testController = null;
+
+        const sectionMeta = {
+            overview: {
+                title: '总览',
+                description: '查看服务状态、模型列表与接口概览。'
+            },
+            debug: {
+                title: '调试测试',
+                description: '直接发送任意文本到 AI 接口，便于后期调试测试。'
+            },
+            config: {
+                title: '配置管理',
+                description: '统一维护 Claude2API 的关键运行配置。'
+            },
+            sessions: {
+                title: 'Session 管理',
+                description: '管理会话池、测试单个 Session 可用性与导出信息。'
+            },
+            stats: {
+                title: '请求统计',
+                description: '查看每次请求的时间、失败类型、上下文数与请求 Session。'
+            }
+        };
+
+        function toggleDrawer(open) {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('mobileOverlay');
+            sidebar.classList.toggle('open', open);
+            overlay.classList.toggle('show', open);
+        }
+
+        function showSection(sectionId) {
+            document.querySelectorAll('.section').forEach(section => {
+                section.classList.toggle('active', section.id === `section-${sectionId}`);
+            });
+
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.classList.toggle('active', item.dataset.section === sectionId);
+            });
+
+            const meta = sectionMeta[sectionId] || sectionMeta.overview;
+            document.getElementById('pageTitle').textContent = meta.title;
+            document.getElementById('pageDescription').textContent = meta.description;
+            toggleDrawer(false);
+        }
 
         async function loadData() {
             try {
                 const response = await fetch('/admin-api/status');
                 const data = await response.json();
-                
-                // Update session count
+
                 document.getElementById('sessionCount').textContent = data.session_count;
-                
-                // Update model list
-                const modelList = document.getElementById('modelList');
-                const testModelSelect = document.getElementById('testModel');
-                
-                modelList.innerHTML = data.models.map(m => {
-                    const isPro = m.toLowerCase().includes('opus');
-                    const badge = isPro
-                        ? '<span class="badge pro">Pro可用</span>'
-                        : '<span class="badge free">免费可用</span>';
-                    return `<span class="model-tag">${m}${badge}</span>`;
-                }).join('');
-                
-                // Update test model select options
-                testModelSelect.innerHTML = data.models.map(m =>
-                    `<option value="${m}">${m}</option>`
-                ).join('');
-                
-                // Update config
-                currentConfig = data.config;
+                renderModels(data.models || []);
+
+                currentConfig = data.config || {};
                 updateConfigUI();
-                
-                // Update sessions
-                sessions = data.sessions;
+
+                sessions = data.sessions || [];
                 updateSessionTable();
-                
+
+                const isOnline = response.ok;
+                const statusDot = document.getElementById('statusDot');
+                const statusText = document.getElementById('statusText');
+                statusDot.className = `status-dot ${isOnline ? 'online' : 'offline'}`;
+                statusText.className = `status-text ${isOnline ? 'online' : 'offline'}`;
+                statusText.textContent = isOnline ? '运行中' : '异常';
             } catch (error) {
                 console.error('Failed to load data:', error);
+                document.getElementById('statusDot').className = 'status-dot offline';
+                document.getElementById('statusText').className = 'status-text offline';
+                document.getElementById('statusText').textContent = '连接失败';
             }
+        }
+
+        function renderModels(models) {
+            const modelList = document.getElementById('modelList');
+            const testModelSelect = document.getElementById('testModel');
+
+            if (!models.length) {
+                modelList.innerHTML = '<span style="color:#9aa4b2;">暂无模型</span>';
+                testModelSelect.innerHTML = '<option value="">暂无模型</option>';
+                return;
+            }
+
+            modelList.innerHTML = models.map(model => {
+                const isPro = model.toLowerCase().includes('opus');
+                const badge = isPro
+                    ? '<span class="badge pro">Pro可用</span>'
+                    : '<span class="badge free">免费可用</span>';
+                return `<span class="model-tag">${escapeHtml(model)} ${badge}</span>`;
+            }).join('');
+
+            testModelSelect.innerHTML = models.map(model =>
+                `<option value="${escapeHtml(model)}">${escapeHtml(model)}</option>`
+            ).join('');
         }
 
         async function loadStats() {
             try {
                 const response = await fetch('/admin-api/stats');
                 const data = await response.json();
-                
-                document.getElementById('totalRequests').textContent = data.total_requests;
-                document.getElementById('successRate').textContent = data.success_rate.toFixed(1) + '%';
-                document.getElementById('rpm').textContent = data.rpm.toFixed(1);
+
+                const total = data.total_requests || 0;
+                const successRate = Number(data.success_rate || 0).toFixed(1) + '%';
+                const rpm = Number(data.rpm || 0).toFixed(1);
+                const avgDuration = Number(data.avg_duration_ms || 0).toFixed(1) + 'ms';
+
+                document.getElementById('totalRequests').textContent = total;
+                document.getElementById('successRate').textContent = successRate;
+                document.getElementById('statsTotalRequests').textContent = total;
+                document.getElementById('statsSuccessRate').textContent = successRate;
+                document.getElementById('rpm').textContent = rpm;
+                document.getElementById('avgDuration').textContent = avgDuration;
             } catch (error) {
                 console.error('Failed to load stats:', error);
             }
@@ -1123,80 +1243,59 @@
             try {
                 const response = await fetch(`/admin-api/logs?page=${logsCurrentPage}&page_size=${logsPageSize}`);
                 const data = await response.json();
-                
-                const container = document.getElementById('logsContainer');
-                const toggleBar = document.getElementById('logsToggleBar');
-                const pagination = document.getElementById('logsPagination');
-                
-                // Update pagination state
+
                 logsTotalCount = data.total || data.count || 0;
                 logsHasMore = data.has_more || false;
-                
-                // Update toggle bar
-                if (logsTotalCount > 0) {
-                    toggleBar.style.display = 'flex';
-                    document.getElementById('totalLogsCount').textContent = logsTotalCount;
-                    
-                    // Fetch stats for historical success rate
-                    const statsResponse = await fetch('/admin-api/stats');
-                    const statsData = await statsResponse.json();
-                    document.getElementById('historicalSuccessRate').textContent = statsData.success_rate.toFixed(1) + '%';
-                } else {
-                    toggleBar.style.display = 'none';
-                }
-                
-                if (data.logs.length === 0) {
-                    container.innerHTML = '<div class="logs-empty">暂无请求记录</div>';
-                    pagination.style.display = 'none';
+                document.getElementById('totalLogsCount').textContent = logsTotalCount;
+
+                const tbody = document.getElementById('logsTableBody');
+                const logs = data.logs || [];
+
+                if (!logs.length) {
+                    tbody.innerHTML = '<tr><td colspan="9" class="empty-state">暂无请求记录</td></tr>';
+                    document.getElementById('logsPagination').style.display = 'none';
                     return;
                 }
-                
-                // Render logs with error details
-                container.innerHTML = data.logs.map(log => {
-                    const time = new Date(log.timestamp).toLocaleTimeString();
+
+                tbody.innerHTML = logs.map(log => {
+                    const time = new Date(log.timestamp).toLocaleString();
                     const statusClass = log.success ? 'success' : 'error';
                     const statusText = log.success ? '成功' : '失败';
-                    const sessionIdx = log.session_idx >= 0 ? `S${log.session_idx + 1}` : '-';
-                    const tokens = log.input_tokens > 0 || log.output_tokens > 0
+                    const errorType = log.error_type || '-';
+                    const contextCount = Number.isFinite(log.context_count) ? log.context_count : '-';
+                    const sessionLabel = log.session_label || (log.session_idx >= 0 ? `S${log.session_idx + 1}` : '-');
+                    const tokens = (log.input_tokens > 0 || log.output_tokens > 0)
                         ? `${log.input_tokens}/${log.output_tokens}`
                         : '-';
-                    const errorInfo = log.error ? escapeHtml(log.error) : '';
-                    
+                    const errorInfo = log.error ? escapeHtml(log.error) : '-';
+
                     return `
-                        <div class="log-item-wrapper">
-                            <div class="log-item">
-                                <span class="log-time">${time}</span>
-                                <span class="log-status ${statusClass}">${statusText}</span>
-                                <span class="log-model" style="min-width: 60px;">${sessionIdx}</span>
-                                <span class="log-model" style="min-width: 140px;">${log.model || '-'}</span>
-                                <span class="log-model" style="min-width: 50px;">${tokens}</span>
-                                <span class="log-duration">${log.duration_ms}ms</span>
-                                ${errorInfo ? `<span class="log-error" title="${errorInfo}">${errorInfo.substring(0, 30)}${errorInfo.length > 30 ? '...' : ''}</span>` : ''}
-                            </div>
-                            ${errorInfo ? `<div class="log-error-tooltip">${errorInfo}</div>` : ''}
-                        </div>
+                        <tr>
+                            <td class="mono">${time}</td>
+                            <td><span class="status-pill ${statusClass}">${statusText}</span></td>
+                            <td><span class="error-type-badge">${escapeHtml(errorType)}</span></td>
+                            <td>${contextCount}</td>
+                            <td class="mono">${escapeHtml(sessionLabel)}</td>
+                            <td>${escapeHtml(log.model || '-')}</td>
+                            <td>${log.duration_ms || 0}ms</td>
+                            <td class="mono">${tokens}</td>
+                            <td title="${errorInfo}">${errorInfo}</td>
+                        </tr>
                     `;
                 }).join('');
-                
-                // Update pagination UI
+
                 const totalPages = Math.ceil(logsTotalCount / logsPageSize);
                 if (totalPages > 1) {
-                    pagination.style.display = 'flex';
+                    document.getElementById('logsPagination').style.display = 'flex';
                     document.getElementById('logsPageInfo').textContent = `${logsCurrentPage} / ${totalPages}`;
                     document.getElementById('prevLogsBtn').disabled = logsCurrentPage <= 1;
                     document.getElementById('nextLogsBtn').disabled = !logsHasMore;
                 } else {
-                    pagination.style.display = 'none';
+                    document.getElementById('logsPagination').style.display = 'none';
                 }
             } catch (error) {
                 console.error('Failed to load logs:', error);
             }
-        }
-
-        function escapeHtml(text) {
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
         }
 
         function prevLogsPage() {
@@ -1214,78 +1313,50 @@
         }
 
         function updateConfigUI() {
-            // Update toggles
             document.getElementById('toggleChatDelete').classList.toggle('active', currentConfig.chat_delete !== false);
             document.getElementById('toggleNoRolePrefix').classList.toggle('active', currentConfig.no_role_prefix === true);
             document.getElementById('toggleDisableArtifacts').classList.toggle('active', currentConfig.prompt_disable_artifacts === true);
             document.getElementById('toggleMirrorApi').classList.toggle('active', currentConfig.enable_mirror_api === true);
-            
-            // Update inputs
             document.getElementById('mirrorApiPrefix').value = currentConfig.mirror_api_prefix || '';
             document.getElementById('maxChatHistoryLength').value = currentConfig.max_chat_history_length || 10000;
             document.getElementById('proxyInput').value = currentConfig.proxy || '';
-            // API Key is shown masked, leave empty for new input
             document.getElementById('apiKeyInput').placeholder = currentConfig.api_key || '输入新的 API Key';
         }
 
-        function updateSessionTable() {
-            const tbody = document.getElementById('sessionTableBody');
-            
-            if (sessions.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="4" class="empty-state">暂无 Session</td></tr>';
-                return;
-            }
-            
-            tbody.innerHTML = sessions.map((session, index) => `
-                <tr>
-                    <td>${index + 1}</td>
-                    <td><code>${session.session_key}</code></td>
-                    <td>${session.org_id || '-'}</td>
-                    <td>
-                        <button class="btn btn-success" onclick="testSession(${index})" style="margin-right: 8px; padding: 6px 12px;">测试</button>
-                        <button class="btn btn-danger" onclick="removeSession(${index})" style="padding: 6px 12px;">删除</button>
-                    </td>
-                </tr>
-            `).join('');
-        }
-
-        async function toggleConfig(key) {
+        function toggleConfig(key) {
             const toggleMap = {
-                'chat_delete': 'toggleChatDelete',
-                'no_role_prefix': 'toggleNoRolePrefix',
-                'prompt_disable_artifacts': 'toggleDisableArtifacts',
-                'enable_mirror_api': 'toggleMirrorApi'
+                chat_delete: 'toggleChatDelete',
+                no_role_prefix: 'toggleNoRolePrefix',
+                prompt_disable_artifacts: 'toggleDisableArtifacts',
+                enable_mirror_api: 'toggleMirrorApi'
             };
-            
+
             const element = document.getElementById(toggleMap[key]);
             const isActive = element.classList.toggle('active');
-            
-            // Update local config
             currentConfig[key] = isActive;
         }
 
         async function saveAllConfig() {
-            const btn = document.querySelector('.save-all-btn');
+            const btn = document.querySelector('#section-config .btn-primary');
+            const originalText = btn.textContent;
             btn.textContent = '保存中...';
             btn.disabled = true;
-            btn.classList.add('saving');
-            
+
             const configData = {
                 chat_delete: document.getElementById('toggleChatDelete').classList.contains('active'),
                 no_role_prefix: document.getElementById('toggleNoRolePrefix').classList.contains('active'),
                 prompt_disable_artifacts: document.getElementById('toggleDisableArtifacts').classList.contains('active'),
                 enable_mirror_api: document.getElementById('toggleMirrorApi').classList.contains('active'),
                 mirror_api_prefix: document.getElementById('mirrorApiPrefix').value,
-                max_chat_history_length: parseInt(document.getElementById('maxChatHistoryLength').value) || 10000,
+                max_chat_history_length: parseInt(document.getElementById('maxChatHistoryLength').value, 10) || 10000,
                 proxy: document.getElementById('proxyInput').value.trim() || null
             };
-            
-            // Only include api_key if user entered a new value
+
             const apiKeyValue = document.getElementById('apiKeyInput').value.trim();
             if (apiKeyValue) {
                 configData.api_key = apiKeyValue;
             }
-            
+
             try {
                 const response = await fetch('/admin-api/config', {
                     method: 'POST',
@@ -1294,29 +1365,41 @@
                 });
 
                 const result = await response.json();
-
-                if (response.ok) {
-                    btn.textContent = '已保存';
-                    btn.classList.remove('saving');
-                    btn.classList.add('success');
-                    setTimeout(() => {
-                        btn.textContent = '保存所有配置';
-                        btn.classList.remove('success');
-                        btn.disabled = false;
-                    }, 2000);
-                } else {
+                if (!response.ok) {
                     throw new Error(result.error || '保存失败');
                 }
+
+                btn.textContent = '已保存';
+                loadData();
             } catch (error) {
                 btn.textContent = '保存失败';
-                btn.classList.remove('saving');
-                btn.classList.add('error');
+                alert('保存失败: ' + error.message);
+            } finally {
                 setTimeout(() => {
-                    btn.textContent = '保存所有配置';
-                    btn.classList.remove('error');
+                    btn.textContent = originalText;
                     btn.disabled = false;
-                }, 2000);
+                }, 1200);
             }
+        }
+
+        function updateSessionTable() {
+            const tbody = document.getElementById('sessionTableBody');
+            if (!sessions.length) {
+                tbody.innerHTML = '<tr><td colspan="4" class="empty-state">暂无 Session</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = sessions.map((session, index) => `
+                <tr>
+                    <td>${index + 1}</td>
+                    <td><code>${escapeHtml(session.session_key)}</code></td>
+                    <td>${escapeHtml(session.org_id || '-')}</td>
+                    <td>
+                        <button class="btn btn-success" onclick="testSession(${index})" style="margin-right:8px; padding:8px 12px;">测试</button>
+                        <button class="btn btn-danger" onclick="removeSession(${index})" style="padding:8px 12px;">删除</button>
+                    </td>
+                </tr>
+            `).join('');
         }
 
         async function addSession() {
@@ -1336,16 +1419,15 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ session_key: sessionKey, org_id: orgId })
                 });
-
                 const result = await response.json();
 
-                if (response.ok) {
-                    keyInput.value = '';
-                    orgInput.value = '';
-                    loadData();
-                } else {
-                    alert(result.error || '添加失败');
+                if (!response.ok) {
+                    throw new Error(result.error || '添加失败');
                 }
+
+                keyInput.value = '';
+                orgInput.value = '';
+                loadData();
             } catch (error) {
                 alert('添加失败: ' + error.message);
             }
@@ -1358,14 +1440,13 @@
                 const response = await fetch(`/admin-api/session/${index}`, {
                     method: 'DELETE'
                 });
-
                 const result = await response.json();
 
-                if (response.ok) {
-                    loadData();
-                } else {
-                    alert(result.error || '删除失败');
+                if (!response.ok) {
+                    throw new Error(result.error || '删除失败');
                 }
+
+                loadData();
             } catch (error) {
                 alert('删除失败: ' + error.message);
             }
@@ -1376,7 +1457,6 @@
             const row = tbody.rows[index];
             const testBtn = row.querySelector('.btn-success');
             const originalText = testBtn.textContent;
-            
             testBtn.textContent = '测试中...';
             testBtn.disabled = true;
 
@@ -1384,15 +1464,12 @@
                 const response = await fetch('/admin-api/session/test', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ index: index })
+                    body: JSON.stringify({ index })
                 });
-
                 const result = await response.json();
 
                 if (result.status === 'ok') {
                     testBtn.textContent = '正常';
-                    testBtn.classList.add('success');
-                    // Update org ID if returned
                     if (result.org_id && sessions[index]) {
                         sessions[index].org_id = result.org_id;
                         updateSessionTable();
@@ -1400,44 +1477,31 @@
                     alert('测试成功！Session 有效' + (result.org_id ? '\nOrg ID: ' + result.org_id : ''));
                 } else {
                     testBtn.textContent = '异常';
-                    testBtn.classList.add('error');
                     alert('测试失败: ' + result.message);
                 }
-
-                setTimeout(() => {
-                    testBtn.textContent = originalText;
-                    testBtn.classList.remove('success', 'error');
-                    testBtn.disabled = false;
-                }, 2000);
-
             } catch (error) {
                 testBtn.textContent = '错误';
-                testBtn.classList.add('error');
                 alert('测试失败: ' + error.message);
+            } finally {
                 setTimeout(() => {
                     testBtn.textContent = originalText;
-                    testBtn.classList.remove('error');
                     testBtn.disabled = false;
-                }, 2000);
+                }, 1400);
             }
         }
 
         async function clearLogs() {
             if (!confirm('确定要清空所有日志吗？')) return;
-            
+
             try {
-                const response = await fetch('/admin-api/logs', {
-                    method: 'DELETE'
-                });
-
+                const response = await fetch('/admin-api/logs', { method: 'DELETE' });
                 const result = await response.json();
-
-                if (response.ok) {
-                    loadLogs();
-                    loadStats();
-                } else {
-                    alert(result.error || '清空失败');
+                if (!response.ok) {
+                    throw new Error(result.error || '清空失败');
                 }
+                logsCurrentPage = 1;
+                loadLogs();
+                loadStats();
             } catch (error) {
                 alert('清空失败: ' + error.message);
             }
@@ -1447,119 +1511,95 @@
             window.location.href = `/admin-api/sessions/export?format=${format}`;
         }
 
-        // Load data on page load
-        loadData();
-        loadStats();
-        loadLogs();
-
-        // Auto refresh every 30 seconds
-        setInterval(() => {
-            loadData();
-            loadStats();
-            loadLogs();
-        }, 30000);
-
-        // Test message function
-        let testController = null;
-        
         async function sendTestMessage() {
             const model = document.getElementById('testModel').value;
             const message = document.getElementById('testMessage').value.trim();
             const stream = document.getElementById('testStream').checked;
+            const apiKey = document.getElementById('testApiKey').value.trim();
             const responseElement = document.getElementById('testResponse');
-            const sendBtn = document.querySelector('.test-section .btn-primary');
-            
+            const sendBtn = document.getElementById('sendTestBtn');
+
             if (!message) {
                 alert('请输入测试消息内容');
                 return;
             }
-            
             if (!model) {
-                alert('请选择要测试的模型');
+                alert('请选择测试模型');
                 return;
             }
-            
-            // Cancel previous request if exists
+            if (!apiKey) {
+                alert('请输入真实 API Key 后再测试');
+                return;
+            }
+
             if (testController) {
                 testController.abort();
             }
-            
-            // Reset response area
+
             responseElement.textContent = '正在发送请求...';
             responseElement.className = 'test-response loading';
             sendBtn.disabled = true;
             sendBtn.textContent = '发送中...';
-            
+
             try {
                 testController = new AbortController();
-                const signal = testController.signal;
-                
-                const requestBody = {
-                    model: model,
-                    messages: [
-                        {
-                            role: "user",
-                            content: message
-                        }
-                    ],
-                    stream: stream
-                };
-                
                 const response = await fetch('/v1/chat/completions', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${currentConfig.api_key || ''}`
+                        'Authorization': `Bearer ${apiKey}`
                     },
-                    body: JSON.stringify(requestBody),
-                    signal: signal
+                    body: JSON.stringify({
+                        model,
+                        messages: [{ role: 'user', content: message }],
+                        stream
+                    }),
+                    signal: testController.signal
                 });
-                
+
                 if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(errorData.error?.message || `请求失败: ${response.status} ${response.statusText}`);
+                    let errorText = `请求失败: ${response.status} ${response.statusText}`;
+                    try {
+                        const errorData = await response.json();
+                        errorText = errorData.error || errorData.message || errorText;
+                    } catch (_) {}
+                    throw new Error(errorText);
                 }
-                
+
                 if (stream) {
                     const reader = response.body.getReader();
                     const decoder = new TextDecoder();
                     let responseText = '';
-                    
+
                     while (true) {
                         const { done, value } = await reader.read();
                         if (done) break;
-                        
+
                         const chunk = decoder.decode(value, { stream: true });
                         const lines = chunk.split('\n');
-                        
+
                         for (const line of lines) {
-                            if (line.startsWith('data: ')) {
-                                const data = line.substring(6);
-                                if (data === '[DONE]') continue;
-                                
-                                try {
-                                    const json = JSON.parse(data);
-                                    const content = json.choices[0]?.delta?.content;
-                                    if (content) {
-                                        responseText += content;
-                                        responseElement.textContent = responseText;
-                                        responseElement.scrollTop = responseElement.scrollHeight;
-                                    }
-                                } catch (e) {
-                                    console.error('Error parsing SSE chunk:', e);
+                            if (!line.startsWith('data: ')) continue;
+                            const data = line.slice(6);
+                            if (data === '[DONE]') continue;
+
+                            try {
+                                const json = JSON.parse(data);
+                                const content = json.choices?.[0]?.delta?.content;
+                                if (content) {
+                                    responseText += content;
+                                    responseElement.textContent = responseText;
+                                    responseElement.scrollTop = responseElement.scrollHeight;
                                 }
-                            }
+                            } catch (_) {}
                         }
                     }
-                    
-                    responseElement.className = 'test-response';
                 } else {
                     const result = await response.json();
-                    const responseText = result.choices[0]?.message?.content || '没有返回内容';
-                    responseElement.textContent = responseText;
-                    responseElement.className = 'test-response';
+                    responseElement.textContent = result.choices?.[0]?.message?.content || '没有返回内容';
                 }
-                
+
+                responseElement.className = 'test-response';
             } catch (error) {
                 if (error.name !== 'AbortError') {
                     responseElement.textContent = `请求出错: ${error.message}`;
@@ -1571,6 +1611,22 @@
                 sendBtn.textContent = '发送消息';
             }
         }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text == null ? '' : String(text);
+            return div.innerHTML;
+        }
+
+        loadData();
+        loadStats();
+        loadLogs();
+
+        setInterval(() => {
+            loadData();
+            loadStats();
+            loadLogs();
+        }, 30000);
     </script>
 </body>
 </html>
