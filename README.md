@@ -104,8 +104,8 @@ go build -o claude2api .
 
 - Docker Hub 仓库：`34v0wphix/claude2api`
 - 目标架构：`linux/amd64`、`linux/arm64`
-- 默认标签：`latest`
-- 版本标签：Git Tag 对应版本，如 `v1.0.0`
+- `main` 分支更新时推送：`latest`、`dev`
+- Git Tag 发布时推送：`latest`、对应版本标签（如 `v1.0.0`）
 
 ### GitHub Secrets 配置
 
@@ -133,6 +133,10 @@ git commit -m "chore: update project"
 git push origin main
 ```
 
+此时会自动推送：
+- `34v0wphix/claude2api:latest`
+- `34v0wphix/claude2api:dev`
+
 如需发布明确版本，也可以继续使用 Tag：
 
 ```bash
@@ -140,9 +144,9 @@ git tag v1.0.0
 git push origin v1.0.0
 ```
 
-推送完成后，工作流会自动发布：
-- 分支推送：`34v0wphix/claude2api:latest` 与基于提交生成的版本标签
-- Tag 推送：`34v0wphix/claude2api:latest` 与对应版本标签，如 `34v0wphix/claude2api:v1.0.0`
+此时会自动推送：
+- `34v0wphix/claude2api:latest`
+- `34v0wphix/claude2api:v1.0.0`
 
 ## ⚙️ 配置说明
 

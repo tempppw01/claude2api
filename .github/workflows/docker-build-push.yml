@@ -36,15 +36,30 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/v')
         run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
 
-      - name: Set default version
-        id: version
+      - name: Set Docker tags
+        id: docker-tags
         run: |
-          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
-            echo "TAG=${{ steps.tag-version.outputs.VERSION }}" >> $GITHUB_OUTPUT
+          IMAGE_NAME="${{ steps.image.outputs.IMAGE_NAME }}"
+          if [[ "${{ github.ref }}" == refs/heads/main ]]; then
+            {
+              echo 'TAGS<<EOF'
+              echo "${IMAGE_NAME}:latest"
+              echo "${IMAGE_NAME}:dev"
+              echo 'EOF'
+            } >> "$GITHUB_OUTPUT"
+          elif [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            {
+              echo 'TAGS<<EOF'
+              echo "${IMAGE_NAME}:latest"
+              echo "${IMAGE_NAME}:${{ steps.tag-version.outputs.VERSION }}"
+              echo 'EOF'
+            } >> "$GITHUB_OUTPUT"
           else
-            SHORT_SHA=$(echo ${GITHUB_SHA} | cut -c1-7)
-            DATE=$(date +'%Y%m%d')
-            echo "TAG=${DATE}-${SHORT_SHA}" >> $GITHUB_OUTPUT
+            {
+              echo 'TAGS<<EOF'
+              echo "${IMAGE_NAME}:dev"
+              echo 'EOF'
+            } >> "$GITHUB_OUTPUT"
           fi
 
       - name: Build and push multi-arch image
@@ -53,12 +68,10 @@ jobs:
           context: .
           push: true
           platforms: linux/amd64,linux/arm64
-          tags: |
-            ${{ steps.image.outputs.IMAGE_NAME }}:latest
-            ${{ steps.image.outputs.IMAGE_NAME }}:${{ steps.version.outputs.TAG }}
+          tags: ${{ steps.docker-tags.outputs.TAGS }}
 
       - name: Output image information
         run: |
-          echo "Multi-arch image has been pushed to ${{ steps.image.outputs.IMAGE_NAME }}:latest"
-          echo "Multi-arch image has been pushed to ${{ steps.image.outputs.IMAGE_NAME }}:${{ steps.version.outputs.TAG }}"
+          echo "Pushed image tags:"
+          echo "${{ steps.docker-tags.outputs.TAGS }}"
           echo "Architectures: linux/amd64, linux/arm64"
