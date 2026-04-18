@@ -1001,11 +1001,12 @@
                                         <th style="width:70px;">#</th>
                                         <th>Session Key</th>
                                         <th>Org ID</th>
+                                        <th>附加 Cookie</th>
                                         <th style="width:180px;">操作</th>
                                     </tr>
                                 </thead>
                                 <tbody id="sessionTableBody">
-                                    <tr><td colspan="4" class="empty-state">加载中...</td></tr>
+                                    <tr><td colspan="5" class="empty-state">加载中...</td></tr>
                                 </tbody>
                             </table>
                         </div>
@@ -1018,6 +1019,14 @@
                             <div class="field">
                                 <label for="newOrgId">Org ID</label>
                                 <input type="text" id="newOrgId" placeholder="Org ID (可选)">
+                            </div>
+                            <div class="field">
+                                <label for="newCfClearance">cf_clearance</label>
+                                <input type="text" id="newCfClearance" placeholder="Cloudflare 通行 Cookie（可选）">
+                            </div>
+                            <div class="field">
+                                <label for="newCookieString">原始 Cookie 串</label>
+                                <input type="text" id="newCookieString" placeholder="name=value; name2=value2（可选）">
                             </div>
                         </div>
 
@@ -1385,7 +1394,7 @@
         function updateSessionTable() {
             const tbody = document.getElementById('sessionTableBody');
             if (!sessions.length) {
-                tbody.innerHTML = '<tr><td colspan="4" class="empty-state">暂无 Session</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="5" class="empty-state">暂无 Session</td></tr>';
                 return;
             }
 
@@ -1394,6 +1403,7 @@
                     <td>${index + 1}</td>
                     <td><code>${escapeHtml(session.session_key)}</code></td>
                     <td>${escapeHtml(session.org_id || '-')}</td>
+                    <td title="${escapeHtml(session.cookie_preview || '-')}">${escapeHtml(session.cookie_preview || '-')}</td>
                     <td>
                         <button class="btn btn-success" onclick="testSession(${index})" style="margin-right:8px; padding:8px 12px;">测试</button>
                         <button class="btn btn-danger" onclick="removeSession(${index})" style="padding:8px 12px;">删除</button>
@@ -1405,8 +1415,12 @@
         async function addSession() {
             const keyInput = document.getElementById('newSessionKey');
             const orgInput = document.getElementById('newOrgId');
+            const cfClearanceInput = document.getElementById('newCfClearance');
+            const cookieStringInput = document.getElementById('newCookieString');
             const sessionKey = keyInput.value.trim();
             const orgId = orgInput.value.trim();
+            const cfClearance = cfClearanceInput.value.trim();
+            const cookieString = cookieStringInput.value.trim();
 
             if (!sessionKey) {
                 alert('请输入 Session Key');
@@ -1417,7 +1431,12 @@
                 const response = await fetch('/admin-api/session', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ session_key: sessionKey, org_id: orgId })
+                    body: JSON.stringify({
+                        session_key: sessionKey,
+                        org_id: orgId,
+                        cf_clearance: cfClearance,
+                        cookie_string: cookieString
+                    })
                 });
                 const result = await response.json();
 
@@ -1427,6 +1446,8 @@
 
                 keyInput.value = '';
                 orgInput.value = '';
+                cfClearanceInput.value = '';
+                cookieStringInput.value = '';
                 loadData();
             } catch (error) {
                 alert('添加失败: ' + error.message);
@@ -1470,11 +1491,16 @@
 
                 if (result.status === 'ok') {
                     testBtn.textContent = '正常';
-                    if (result.org_id && sessions[index]) {
-                        sessions[index].org_id = result.org_id;
+                    if (sessions[index]) {
+                        if (result.org_id) {
+                            sessions[index].org_id = result.org_id;
+                        }
+                        if (typeof result.cookie_preview === 'string') {
+                            sessions[index].cookie_preview = result.cookie_preview;
+                        }
                         updateSessionTable();
                     }
-                    alert('测试成功！Session 有效' + (result.org_id ? '\nOrg ID: ' + result.org_id : ''));
+                    alert('测试成功！Session 有效' + (result.org_id ? '\nOrg ID: ' + result.org_id : '') + (result.cookie_preview ? '\nCookies: ' + result.cookie_preview : ''));
                 } else {
                     testBtn.textContent = '异常';
                     alert('测试失败: ' + result.message);

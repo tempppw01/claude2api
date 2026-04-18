@@ -16,8 +16,10 @@ import (
 )
 
 type SessionInfo struct {
-	SessionKey string `yaml:"sessionKey"`
-	OrgID      string `yaml:"orgID"`
+	SessionKey   string `yaml:"sessionKey" json:"session_key"`
+	OrgID        string `yaml:"orgID" json:"org_id"`
+	CFClearance  string `yaml:"cfClearance,omitempty" json:"cf_clearance,omitempty"`
+	CookieString string `yaml:"cookieString,omitempty" json:"cookie_string,omitempty"`
 }
 
 type SessionRagen struct {
@@ -62,6 +64,12 @@ func parseSessionEnv(envValue string) (int, []SessionInfo) {
 			session.OrgID = parts[1]
 		} else if len(parts) == 1 {
 			session.OrgID = ""
+		}
+		if len(parts) > 2 {
+			session.CFClearance = parts[2]
+		}
+		if len(parts) > 3 {
+			session.CookieString = strings.Join(parts[3:], ":")
 		}
 
 		sessions = append(sessions, session)

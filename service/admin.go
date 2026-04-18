@@ -24,9 +24,12 @@ func AdminStatusHandler(c *gin.Context) {
 	for i, session := range config.ConfigInstance.Sessions {
 		maskedKey := maskSessionKey(session.SessionKey)
 		sessions = append(sessions, map[string]interface{}{
-			"index":       i,
-			"session_key": maskedKey,
-			"org_id":      session.OrgID,
+			"index":          i,
+			"session_key":    maskedKey,
+			"org_id":         session.OrgID,
+			"cf_clearance":   session.CFClearance != "",
+			"cookie_string":  session.CookieString != "",
+			"cookie_preview": maskCookiePreview(session),
 		})
 	}
 
@@ -62,8 +65,10 @@ func maskSessionKey(key string) string {
 
 // AddSessionRequest represents the request body for adding a session
 type AddSessionRequest struct {
-	SessionKey string `json:"session_key" binding:"required"`
-	OrgID      string `json:"org_id"`
+	SessionKey   string `json:"session_key" binding:"required"`
+	OrgID        string `json:"org_id"`
+	CFClearance  string `json:"cf_clearance"`
+	CookieString string `json:"cookie_string"`
 }
 
 // AdminAddSessionHandler handles adding a new session
@@ -90,8 +95,10 @@ func AdminAddSessionHandler(c *gin.Context) {
 
 	// Add to config
 	newSession := config.SessionInfo{
-		SessionKey: req.SessionKey,
-		OrgID:      req.OrgID,
+		SessionKey:   req.SessionKey,
+		OrgID:        req.OrgID,
+		CFClearance:  strings.TrimSpace(req.CFClearance),
+		CookieString: strings.TrimSpace(req.CookieString),
 	}
 	config.ConfigInstance.Sessions = append(config.ConfigInstance.Sessions, newSession)
 	config.ConfigInstance.RetryCount = len(config.ConfigInstance.Sessions)
@@ -152,8 +159,10 @@ func AdminRemoveSessionHandler(c *gin.Context) {
 
 // TestSessionRequest represents the request body for testing a session
 type TestSessionRequest struct {
-	SessionKey string `json:"session_key"`
-	Index      int    `json:"index"`
+	SessionKey   string `json:"session_key"`
+	Index        int    `json:"index"`
+	CFClearance  string `json:"cf_clearance"`
+	CookieString string `json:"cookie_string"`
 }
 
 // AdminTestSessionHandler handles testing a session
@@ -164,18 +173,22 @@ func AdminTestSessionHandler(c *gin.Context) {
 		return
 	}
 
-	var sessionKey string
-	if req.SessionKey != "" {
-		sessionKey = req.SessionKey
+	testSession := config.SessionInfo{
+		SessionKey:   strings.TrimSpace(req.SessionKey),
+		CFClearance:  strings.TrimSpace(req.CFClearance),
+		CookieString: strings.TrimSpace(req.CookieString),
+	}
+	if testSession.SessionKey != "" {
+		testSession.OrgID = ""
 	} else if req.Index >= 0 && req.Index < len(config.ConfigInstance.Sessions) {
-		sessionKey = config.ConfigInstance.Sessions[req.Index].SessionKey
+		testSession = config.ConfigInstance.Sessions[req.Index]
 	} else {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid session key or index"})
 		return
 	}
 
 	// Create client and test
-	client := core.NewClient(sessionKey, config.ConfigInstance.Proxy, "claude-sonnet-4-6-20260217")
+	client := core.NewClientFromSession(testSession, config.ConfigInstance.Proxy, "claude-sonnet-4-6-20260217")
 
 	// Try to get org ID as a test
 	orgID, err := client.GetOrgID()
@@ -190,14 +203,15 @@ func AdminTestSessionHandler(c *gin.Context) {
 	// Update org ID if not set
 	if req.Index >= 0 && req.Index < len(config.ConfigInstance.Sessions) {
 		if config.ConfigInstance.Sessions[req.Index].OrgID == "" {
-			config.ConfigInstance.SetSessionOrgID(sessionKey, orgID)
+			config.ConfigInstance.SetSessionOrgID(testSession.SessionKey, orgID)
 		}
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"status":  "ok",
-		"message": "Session is valid",
-		"org_id":  orgID,
+		"status":         "ok",
+		"message":        "Session is valid",
+		"org_id":         orgID,
+		"cookie_preview": maskCookiePreview(testSession),
 	})
 }
 
@@ -303,6 +317,20 @@ func maskAPIKey(key string) string {
 		return "****"
 	}
 	return key[:4] + "****" + key[len(key)-4:]
+}
+
+func maskCookiePreview(session config.SessionInfo) string {
+	parts := make([]string, 0, 2)
+	if session.CFClearance != "" {
+		parts = append(parts, "cf_clearance")
+	}
+	if session.CookieString != "" {
+		parts = append(parts, "custom cookies")
+	}
+	if len(parts) == 0 {
+		return "-"
+	}
+	return strings.Join(parts, ", ")
 }
 
 // AdminStatsHandler handles the stats endpoint
@@ -453,16 +481,18 @@ func AdminExportSessionsHandler(c *gin.Context) {
 	filename := "sessions." + format
 
 	if format == "csv" {
-		content = "index,session_key,org_id\n"
+		content = "index,session_key,org_id,cf_clearance,cookie_string\n"
 		for i, s := range sessions {
-			content += fmt.Sprintf("%d,%s,%s\n", i, s.SessionKey, s.OrgID)
+			content += fmt.Sprintf("%d,%s,%s,%t,%q\n", i, s.SessionKey, s.OrgID, s.CFClearance != "", s.CookieString)
 		}
 	} else {
 		// TXT format
 		for i, s := range sessions {
 			content += fmt.Sprintf("Session %d:\n", i+1)
 			content += fmt.Sprintf("  Key: %s\n", s.SessionKey)
-			content += fmt.Sprintf("  Org ID: %s\n\n", s.OrgID)
+			content += fmt.Sprintf("  Org ID: %s\n", s.OrgID)
+			content += fmt.Sprintf("  CF Clearance: %t\n", s.CFClearance != "")
+			content += fmt.Sprintf("  Cookie String: %s\n\n", s.CookieString)
 		}
 	}
 

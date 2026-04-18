@@ -2,6 +2,7 @@ package core
 
 import (
 	"bufio"
+	"claude2api/config"
 	"claude2api/logger"
 	"claude2api/model"
 	"encoding/base64"
@@ -99,6 +100,10 @@ func GetErrorMessage(err error) string {
 }
 
 func NewClient(sessionKey string, proxy string, model string) *Client {
+	return NewClientFromSession(config.SessionInfo{SessionKey: sessionKey}, proxy, model)
+}
+
+func NewClientFromSession(session config.SessionInfo, proxy string, model string) *Client {
 	client := req.C().ImpersonateChrome().SetTimeout(time.Minute * 5)
 	client.Transport.SetResponseHeaderTimeout(time.Second * 10)
 	if proxy != "" {
@@ -116,14 +121,10 @@ func NewClient(sessionKey string, proxy string, model string) *Client {
 	for key, value := range headers {
 		client.SetCommonHeader(key, value)
 	}
-	// Set cookies
-	client.SetCommonCookies(&http.Cookie{
-		Name:  "sessionKey",
-		Value: sessionKey,
-	})
+	applySessionCookies(client, session)
 	// Create default client with session key
 	c := &Client{
-		SessionKey: sessionKey,
+		SessionKey: session.SessionKey,
 		client:     client,
 		model:      model,
 		defaultAttrs: map[string]interface{}{
@@ -156,6 +157,66 @@ func NewClient(sessionKey string, proxy string, model string) *Client {
 		},
 	}
 	return c
+}
+
+func applySessionCookies(client *req.Client, session config.SessionInfo) {
+	cookies := []*http.Cookie{
+		{
+			Name:  "sessionKey",
+			Value: session.SessionKey,
+		},
+	}
+
+	if session.CFClearance != "" {
+		cookies = append(cookies, &http.Cookie{
+			Name:  "cf_clearance",
+			Value: session.CFClearance,
+		})
+		logger.Info("Applied cf_clearance cookie for Claude session")
+	}
+
+	for _, cookie := range parseCookieString(session.CookieString) {
+		cookies = append(cookies, cookie)
+	}
+
+	client.SetCommonCookies(cookies...)
+}
+
+func parseCookieString(raw string) []*http.Cookie {
+	if strings.TrimSpace(raw) == "" {
+		return nil
+	}
+
+	parts := strings.Split(raw, ";")
+	cookies := make([]*http.Cookie, 0, len(parts))
+	seen := map[string]struct{}{
+		"sessionKey": {},
+	}
+
+	for _, part := range parts {
+		part = strings.TrimSpace(part)
+		if part == "" {
+			continue
+		}
+
+		segments := strings.SplitN(part, "=", 2)
+		if len(segments) != 2 {
+			continue
+		}
+
+		name := strings.TrimSpace(segments[0])
+		value := strings.TrimSpace(segments[1])
+		if name == "" || value == "" {
+			continue
+		}
+		if _, exists := seen[name]; exists {
+			continue
+		}
+		seen[name] = struct{}{}
+		cookies = append(cookies, &http.Cookie{Name: name, Value: value})
+	}
+
+	return cookies
 }
 
 // SetOrgID sets the organization ID for the client

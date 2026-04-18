@@ -234,7 +234,7 @@ func handleChatRequest(c *gin.Context, session config.SessionInfo, model string,
 // handleChatRequestWithTokens handles the chat request and returns token counts
 func handleChatRequestWithTokens(c *gin.Context, session config.SessionInfo, model string, processor *utils.ChatRequestProcessor, stream bool) (int, int, error) {
 	// Initialize the Claude client
-	claudeClient := core.NewClient(session.SessionKey, config.ConfigInstance.Proxy, model)
+	claudeClient := core.NewClientFromSession(session, config.ConfigInstance.Proxy, model)
 
 	// Get org ID if not already set
 	if session.OrgID == "" {
