@@ -27,20 +27,36 @@ type SessionRagen struct {
 	Mutex sync.Mutex
 }
 
+type ModelDefinition struct {
+	PublicID             string `yaml:"publicId" json:"public_id"`
+	UpstreamID           string `yaml:"upstreamId" json:"upstream_id"`
+	DisplayName          string `yaml:"displayName,omitempty" json:"display_name,omitempty"`
+	Tier                 string `yaml:"tier,omitempty" json:"tier,omitempty"`
+	SupportsThinking     bool   `yaml:"supportsThinking,omitempty" json:"supports_thinking,omitempty"`
+	Enabled              bool   `yaml:"enabled" json:"enabled"`
+	Visible              bool   `yaml:"visible" json:"visible"`
+	SystemPromptOverride string `yaml:"systemPromptOverride,omitempty" json:"system_prompt_override,omitempty"`
+	PromptOverrideMode   string `yaml:"promptOverrideMode,omitempty" json:"prompt_override_mode,omitempty"`
+	Notes                string `yaml:"notes,omitempty" json:"notes,omitempty"`
+}
+
 type Config struct {
-	Sessions               []SessionInfo `yaml:"sessions"`
-	Address                string        `yaml:"address"`
-	APIKey                 string        `yaml:"apiKey"`
-	Proxy                  string        `yaml:"proxy"`
-	ChatDelete             bool          `yaml:"chatDelete"`
-	MaxChatHistoryLength   int           `yaml:"maxChatHistoryLength"`
-	RetryCount             int           `yaml:"retryCount"`
-	NoRolePrefix           bool          `yaml:"noRolePrefix"`
-	PromptDisableArtifacts bool          `yaml:"promptDisableArtifacts"`
-	EnableMirrorApi        bool          `yaml:"enableMirrorApi"`
-	MirrorApiPrefix        string        `yaml:"mirrorApiPrefix"`
-	AdminPassword          string        `yaml:"adminPassword"`
-	RwMutx                 sync.RWMutex  `yaml:"-"` // 不从YAML加载
+	Sessions                   []SessionInfo    `yaml:"sessions"`
+	Address                    string           `yaml:"address"`
+	APIKey                     string           `yaml:"apiKey"`
+	Proxy                      string           `yaml:"proxy"`
+	ChatDelete                 bool             `yaml:"chatDelete"`
+	MaxChatHistoryLength       int              `yaml:"maxChatHistoryLength"`
+	RetryCount                 int              `yaml:"retryCount"`
+	NoRolePrefix               bool             `yaml:"noRolePrefix"`
+	PromptDisableArtifacts     bool             `yaml:"promptDisableArtifacts"`
+	EnableMirrorApi            bool             `yaml:"enableMirrorApi"`
+	MirrorApiPrefix            string           `yaml:"mirrorApiPrefix"`
+	AdminPassword              string           `yaml:"adminPassword"`
+	GlobalSystemPromptOverride string           `yaml:"globalSystemPromptOverride"`
+	GlobalPromptOverrideMode   string           `yaml:"globalPromptOverrideMode"`
+	ModelDefinitions           []ModelDefinition `yaml:"modelDefinitions"`
+	RwMutx                     sync.RWMutex     `yaml:"-"` // 不从YAML加载
 }
 
 // 解析 SESSION 格式的环境变量
@@ -260,17 +276,20 @@ func createDefaultConfigFile(config *Config) error {
 	
 	// 构建配置数据
 	configData := map[string]interface{}{
-		"sessions":                config.Sessions,
-		"address":                 config.Address,
-		"apiKey":                  config.APIKey,
-		"proxy":                   config.Proxy,
-		"chatDelete":              config.ChatDelete,
-		"maxChatHistoryLength":    config.MaxChatHistoryLength,
-		"noRolePrefix":            config.NoRolePrefix,
-		"promptDisableArtifacts":  config.PromptDisableArtifacts,
-		"enableMirrorApi":         config.EnableMirrorApi,
-		"mirrorApiPrefix":         config.MirrorApiPrefix,
-		"adminPassword":           config.AdminPassword,
+		"sessions":                   config.Sessions,
+		"address":                    config.Address,
+		"apiKey":                     config.APIKey,
+		"proxy":                      config.Proxy,
+		"chatDelete":                 config.ChatDelete,
+		"maxChatHistoryLength":       config.MaxChatHistoryLength,
+		"noRolePrefix":               config.NoRolePrefix,
+		"promptDisableArtifacts":     config.PromptDisableArtifacts,
+		"enableMirrorApi":            config.EnableMirrorApi,
+		"mirrorApiPrefix":            config.MirrorApiPrefix,
+		"adminPassword":              config.AdminPassword,
+		"globalSystemPromptOverride": config.GlobalSystemPromptOverride,
+		"globalPromptOverrideMode":   config.GlobalPromptOverrideMode,
+		"modelDefinitions":           config.ModelDefinitions,
 	}
 	
 	// 序列化为 YAML

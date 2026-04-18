@@ -26,27 +26,19 @@ func HealthCheckHandler(c *gin.Context) {
 }
 
 func MoudlesHandler(c *gin.Context) {
-	models := []map[string]interface{}{
-		{"id": "claude-3-7-sonnet-20250219"},
-		{"id": "claude-sonnet-4-20250514"},
-		{"id": "claude-sonnet-4-6-20260217"},
-		{"id": "claude-opus-4-20250514"},
-	}
-
-	extendedModels := make([]map[string]interface{}, 0, len(models)*2)
-	for _, m := range models {
-		// 保留原有 id
-		extendedModels = append(extendedModels, m)
-		// 追加 -think 版本
-		if id, ok := m["id"].(string); ok {
-			extendedModels = append(extendedModels, map[string]interface{}{
-				"id": id + "-think",
-			})
+	resolved := GetResolvedModels()
+	models := make([]map[string]interface{}, 0, len(resolved))
+	for _, item := range resolved {
+		if !item.Enabled || !item.Visible {
+			continue
 		}
+		models = append(models, map[string]interface{}{
+			"id": item.PublicID,
+		})
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"data": extendedModels,
+		"data": models,
 	})
 }
 
@@ -73,10 +65,16 @@ func ChatCompletionsHandler(c *gin.Context) {
 
 	// Process messages into prompt and extract images
 	processor := utils.NewChatRequestProcessor()
-	processor.ProcessMessages(req.Messages)
 
 	// Get model or use default
-	model := getModelOrDefault(req.Model)
+	selectedModel := ResolveModel(getModelOrDefault(req.Model))
+	promptOverride, promptMode := resolvePromptOverride(selectedModel)
+	processor.SetPromptOverride(promptOverride, promptMode)
+	processor.ProcessMessages(req.Messages)
+	model := selectedModel.UpstreamID
+	if selectedModel.Thinking {
+		model += "-think"
+	}
 	index := config.Sr.NextIndex()
 	
 	lastError := "request failed"
@@ -105,7 +103,7 @@ func ChatCompletionsHandler(c *gin.Context) {
 			continue
 		}
 
-		logger.Info(fmt.Sprintf("Using session for model %s: %s", model, session.SessionKey))
+		logger.Info(fmt.Sprintf("Using session for model %s (requested: %s): %s", model, selectedModel.RequestedModel, session.SessionKey))
 		if i > 0 {
 			processor.Prompt.Reset()
 			processor.Prompt.WriteString(processor.RootPrompt.String())
@@ -158,10 +156,16 @@ func MirrorChatHandler(c *gin.Context) {
 
 	// Process messages into prompt and extract images
 	processor := utils.NewChatRequestProcessor()
-	processor.ProcessMessages(req.Messages)
 
 	// Get model or use default
-	model := getModelOrDefault(req.Model)
+	selectedModel := ResolveModel(getModelOrDefault(req.Model))
+	promptOverride, promptMode := resolvePromptOverride(selectedModel)
+	processor.SetPromptOverride(promptOverride, promptMode)
+	processor.ProcessMessages(req.Messages)
+	model := selectedModel.UpstreamID
+	if selectedModel.Thinking {
+		model += "-think"
+	}
 
 	// Extract session info from auth header
 	session, err := extractSessionFromAuthHeader(c)
@@ -224,6 +228,16 @@ func extractSessionFromAuthHeader(c *gin.Context) (config.SessionInfo, error) {
 	}
 
 	return config.SessionInfo{SessionKey: authInfo, OrgID: ""}, nil
+}
+
+func resolvePromptOverride(selectedModel ResolvedModelSelection) (string, string) {
+	if strings.TrimSpace(selectedModel.SystemPromptOverride) != "" {
+		return selectedModel.SystemPromptOverride, selectedModel.PromptOverrideMode
+	}
+	if strings.TrimSpace(config.ConfigInstance.GlobalSystemPromptOverride) != "" {
+		return config.ConfigInstance.GlobalSystemPromptOverride, normalizePromptMode(config.ConfigInstance.GlobalPromptOverrideMode)
+	}
+	return "", "append"
 }
 
 func handleChatRequest(c *gin.Context, session config.SessionInfo, model string, processor *utils.ChatRequestProcessor, stream bool) error {

@@ -1074,6 +1074,79 @@
                                 </div>
                                 <input type="password" class="config-input" id="adminPasswordConfigInput" placeholder="输入新的管理页密码">
                             </div>
+
+                            <div class="config-row" style="grid-template-columns:1fr; align-items:stretch;">
+                                <div class="config-label">
+                                    <span class="config-label-text">全局系统提示词覆盖</span>
+                                    <span class="config-label-desc">可为所有模型统一追加或替换系统提示词；模型级配置优先级更高</span>
+                                </div>
+                                <div class="field" style="display:grid; gap:10px;">
+                                    <select id="globalPromptOverrideMode" class="config-input">
+                                        <option value="append">追加模式</option>
+                                        <option value="replace">替换模式</option>
+                                    </select>
+                                    <textarea id="globalSystemPromptOverride" class="config-input" rows="5" placeholder="输入全局系统提示词覆盖内容"></textarea>
+                                </div>
+                            </div>
+
+                            <div class="config-row" style="grid-template-columns:1fr; align-items:stretch;">
+                                <div class="config-label">
+                                    <span class="config-label-text">模型映射与模型管理</span>
+                                    <span class="config-label-desc">支持维护对外模型名、真实上游模型 ID、Thinking 能力、可见性、免费或 Pro 分级与模型级提示词覆盖</span>
+                                </div>
+                                <div style="display:grid; gap:16px;">
+                                    <div class="table-wrap">
+                                        <table>
+                                            <thead>
+                                                <tr>
+                                                    <th>对外模型 ID</th>
+                                                    <th>上游模型 ID</th>
+                                                    <th>显示名</th>
+                                                    <th>分级</th>
+                                                    <th>Thinking</th>
+                                                    <th>启用</th>
+                                                    <th>显示</th>
+                                                    <th>提示词模式</th>
+                                                    <th>操作</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="modelDefinitionTableBody">
+                                                <tr><td colspan="9" class="empty-state">加载中...</td></tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+
+                                    <div class="field" style="display:grid; gap:12px;">
+                                        <div style="display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:12px;">
+                                            <input type="text" id="modelPublicIdInput" class="config-input" placeholder="对外模型 ID，如 claude-sonnet-4-6">
+                                            <input type="text" id="modelUpstreamIdInput" class="config-input" placeholder="上游模型 ID，如 claude-sonnet-4-6-20260217">
+                                            <input type="text" id="modelDisplayNameInput" class="config-input" placeholder="显示名称，如 Claude Sonnet 4.6">
+                                        </div>
+                                        <div style="display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:12px;">
+                                            <select id="modelTierInput" class="config-input">
+                                                <option value="free">免费</option>
+                                                <option value="pro">Pro</option>
+                                                <option value="unknown">未知</option>
+                                            </select>
+                                            <select id="modelPromptOverrideModeInput" class="config-input">
+                                                <option value="append">追加提示词</option>
+                                                <option value="replace">替换提示词</option>
+                                            </select>
+                                            <input type="text" id="modelNotesInput" class="config-input" placeholder="备注，例如 Legacy upstream-compatible model ID">
+                                        </div>
+                                        <textarea id="modelSystemPromptOverrideInput" class="config-input" rows="4" placeholder="模型级系统提示词覆盖；留空表示不设置"></textarea>
+                                        <div style="display:flex; gap:16px; flex-wrap:wrap;">
+                                            <label class="test-option"><input type="checkbox" id="modelSupportsThinkingInput"> 支持 Thinking</label>
+                                            <label class="test-option"><input type="checkbox" id="modelEnabledInput" checked> 启用</label>
+                                            <label class="test-option"><input type="checkbox" id="modelVisibleInput" checked> 在模型列表显示</label>
+                                        </div>
+                                        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                                            <button class="btn btn-secondary" type="button" onclick="resetModelDefinitionForm()">重置表单</button>
+                                            <button class="btn btn-primary" type="button" onclick="upsertModelDefinition()">添加或更新模型</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
                         <button class="btn btn-primary" style="margin-top:16px; width:100%;" onclick="saveAllConfig()">保存所有配置</button>
@@ -1224,6 +1297,8 @@
     <script>
         let currentConfig = {};
         let sessions = [];
+        let modelDefinitions = [];
+        let editingModelIndex = -1;
         let logsCurrentPage = 1;
         let logsTotalCount = 0;
         let logsHasMore = false;
@@ -1404,7 +1479,9 @@
                 renderModels(data.models || []);
 
                 currentConfig = data.config || {};
+                modelDefinitions = Array.isArray(currentConfig.model_definitions) ? currentConfig.model_definitions : [];
                 updateConfigUI();
+                renderModelDefinitions();
 
                 sessions = data.sessions || [];
                 updateSessionTable();
@@ -1434,16 +1511,154 @@
             }
 
             modelList.innerHTML = models.map(model => {
-                const isPro = model.toLowerCase().includes('opus');
+                const item = typeof model === 'string' ? { id: model } : (model || {});
+                const modelId = item.public_id || item.id || item.upstream_id || '';
+                const displayName = item.display_name || modelId;
+                const tier = String(item.tier || '').toLowerCase();
+                const isPro = tier === 'pro' || modelId.toLowerCase().includes('opus');
                 const badge = isPro
                     ? '<span class="badge pro">Pro可用</span>'
                     : '<span class="badge free">免费可用</span>';
-                return `<span class="model-tag">${escapeHtml(model)} ${badge}</span>`;
+                const meta = displayName && displayName !== modelId
+                    ? `<span style="color:#9aa4b2; font-size:0.82rem;">${escapeHtml(displayName)}</span>`
+                    : '';
+                return `<span class="model-tag">${escapeHtml(modelId)} ${badge}${meta ? `<br>${meta}` : ''}</span>`;
             }).join('');
 
-            testModelSelect.innerHTML = models.map(model =>
-                `<option value="${escapeHtml(model)}">${escapeHtml(model)}</option>`
-            ).join('');
+            testModelSelect.innerHTML = models.map(model => {
+                const item = typeof model === 'string' ? { id: model } : (model || {});
+                const modelId = item.public_id || item.id || item.upstream_id || '';
+                const displayName = item.display_name || modelId;
+                const optionLabel = displayName && displayName !== modelId
+                    ? `${modelId} (${displayName})`
+                    : modelId;
+                return `<option value="${escapeHtml(modelId)}">${escapeHtml(optionLabel)}</option>`;
+            }).join('');
+        }
+
+        function renderModelDefinitions() {
+            const tbody = document.getElementById('modelDefinitionTableBody');
+            if (!tbody) {
+                return;
+            }
+
+            if (!modelDefinitions.length) {
+                tbody.innerHTML = '<tr><td colspan="9" class="empty-state">暂无自定义模型定义，将使用内置模型注册表</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = modelDefinitions.map((item, index) => {
+                const publicId = item.public_id || item.publicId || '';
+                const upstreamId = item.upstream_id || item.upstreamId || '';
+                const displayName = item.display_name || item.displayName || '-';
+                const tier = item.tier || 'unknown';
+                const promptMode = item.prompt_override_mode || item.promptOverrideMode || 'append';
+                const supportsThinking = item.supports_thinking === true || item.supportsThinking === true;
+                const enabled = item.enabled !== false;
+                const visible = item.visible !== false;
+                return `
+                    <tr>
+                        <td class="mono">${escapeHtml(publicId)}</td>
+                        <td class="mono">${escapeHtml(upstreamId)}</td>
+                        <td>${escapeHtml(displayName)}</td>
+                        <td>${escapeHtml(tier)}</td>
+                        <td>${supportsThinking ? '是' : '否'}</td>
+                        <td>${enabled ? '是' : '否'}</td>
+                        <td>${visible ? '是' : '否'}</td>
+                        <td>${promptMode === 'replace' ? '替换' : '追加'}</td>
+                        <td>
+                            <button class="btn btn-secondary" type="button" onclick="editModelDefinition(${index})" style="margin-right:8px; padding:8px 12px;">编辑</button>
+                            <button class="btn btn-danger" type="button" onclick="removeModelDefinition(${index})" style="padding:8px 12px;">删除</button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function resetModelDefinitionForm() {
+            editingModelIndex = -1;
+            document.getElementById('modelPublicIdInput').value = '';
+            document.getElementById('modelUpstreamIdInput').value = '';
+            document.getElementById('modelDisplayNameInput').value = '';
+            document.getElementById('modelTierInput').value = 'free';
+            document.getElementById('modelPromptOverrideModeInput').value = 'append';
+            document.getElementById('modelNotesInput').value = '';
+            document.getElementById('modelSystemPromptOverrideInput').value = '';
+            document.getElementById('modelSupportsThinkingInput').checked = false;
+            document.getElementById('modelEnabledInput').checked = true;
+            document.getElementById('modelVisibleInput').checked = true;
+        }
+
+        function editModelDefinition(index) {
+            const item = modelDefinitions[index];
+            if (!item) {
+                return;
+            }
+            editingModelIndex = index;
+            document.getElementById('modelPublicIdInput').value = item.public_id || item.publicId || '';
+            document.getElementById('modelUpstreamIdInput').value = item.upstream_id || item.upstreamId || '';
+            document.getElementById('modelDisplayNameInput').value = item.display_name || item.displayName || '';
+            document.getElementById('modelTierInput').value = item.tier || 'unknown';
+            document.getElementById('modelPromptOverrideModeInput').value = item.prompt_override_mode || item.promptOverrideMode || 'append';
+            document.getElementById('modelNotesInput').value = item.notes || '';
+            document.getElementById('modelSystemPromptOverrideInput').value = item.system_prompt_override || item.systemPromptOverride || '';
+            document.getElementById('modelSupportsThinkingInput').checked = item.supports_thinking === true || item.supportsThinking === true;
+            document.getElementById('modelEnabledInput').checked = item.enabled !== false;
+            document.getElementById('modelVisibleInput').checked = item.visible !== false;
+        }
+
+        function upsertModelDefinition() {
+            const publicId = document.getElementById('modelPublicIdInput').value.trim();
+            const upstreamId = document.getElementById('modelUpstreamIdInput').value.trim();
+            if (!publicId || !upstreamId) {
+                alert('请先填写对外模型 ID 和上游模型 ID');
+                return;
+            }
+
+            const item = {
+                public_id: publicId,
+                upstream_id: upstreamId,
+                display_name: document.getElementById('modelDisplayNameInput').value.trim(),
+                tier: document.getElementById('modelTierInput').value,
+                supports_thinking: document.getElementById('modelSupportsThinkingInput').checked,
+                enabled: document.getElementById('modelEnabledInput').checked,
+                visible: document.getElementById('modelVisibleInput').checked,
+                prompt_override_mode: document.getElementById('modelPromptOverrideModeInput').value,
+                system_prompt_override: document.getElementById('modelSystemPromptOverrideInput').value.trim(),
+                notes: document.getElementById('modelNotesInput').value.trim()
+            };
+
+            const duplicateIndex = modelDefinitions.findIndex((existing, index) => {
+                const existingPublicId = existing.public_id || existing.publicId || '';
+                if (editingModelIndex >= 0 && index === editingModelIndex) {
+                    return false;
+                }
+                return existingPublicId === publicId;
+            });
+            if (duplicateIndex >= 0) {
+                alert('已存在相同的对外模型 ID，请直接编辑该记录');
+                return;
+            }
+
+            if (editingModelIndex >= 0 && modelDefinitions[editingModelIndex]) {
+                modelDefinitions[editingModelIndex] = item;
+            } else {
+                modelDefinitions.push(item);
+            }
+
+            renderModelDefinitions();
+            resetModelDefinitionForm();
+        }
+
+        function removeModelDefinition(index) {
+            if (!confirm('确定要删除这条模型定义吗？')) {
+                return;
+            }
+            modelDefinitions.splice(index, 1);
+            renderModelDefinitions();
+            if (editingModelIndex === index) {
+                resetModelDefinitionForm();
+            }
         }
 
         async function loadStats() {
@@ -1550,6 +1765,9 @@
             document.getElementById('proxyInput').value = currentConfig.proxy || '';
             document.getElementById('apiKeyInput').placeholder = currentConfig.api_key || '输入新的 API Key';
             document.getElementById('adminPasswordConfigInput').value = '';
+            document.getElementById('globalPromptOverrideMode').value = currentConfig.global_prompt_override_mode || 'append';
+            document.getElementById('globalSystemPromptOverride').value = currentConfig.global_system_prompt_override || '';
+            resetModelDefinitionForm();
         }
 
         function toggleConfig(key) {
@@ -1578,7 +1796,10 @@
                 enable_mirror_api: document.getElementById('toggleMirrorApi').classList.contains('active'),
                 mirror_api_prefix: document.getElementById('mirrorApiPrefix').value,
                 max_chat_history_length: parseInt(document.getElementById('maxChatHistoryLength').value, 10) || 10000,
-                proxy: document.getElementById('proxyInput').value.trim() || null
+                proxy: document.getElementById('proxyInput').value.trim() || null,
+                global_prompt_override_mode: document.getElementById('globalPromptOverrideMode').value,
+                global_system_prompt_override: document.getElementById('globalSystemPromptOverride').value.trim(),
+                model_definitions: modelDefinitions
             };
 
             const apiKeyValue = document.getElementById('apiKeyInput').value.trim();

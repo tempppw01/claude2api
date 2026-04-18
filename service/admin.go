@@ -19,7 +19,7 @@ const adminAuthCookieName = "admin_auth"
 // AdminStatusHandler handles the admin status endpoint
 func AdminStatusHandler(c *gin.Context) {
 	// Get model list
-	models := getModelList()
+	models := GetAdminModelSummaries()
 
 	// Build session list (mask sensitive data)
 	sessions := make([]map[string]interface{}, 0)
@@ -41,18 +41,7 @@ func AdminStatusHandler(c *gin.Context) {
 		"session_count": len(config.ConfigInstance.Sessions),
 		"sessions":      sessions,
 		"models":        models,
-		"config": gin.H{
-			"address":                  config.ConfigInstance.Address,
-			"proxy":                    config.ConfigInstance.Proxy,
-			"chat_delete":              config.ConfigInstance.ChatDelete,
-			"max_chat_history_length":  config.ConfigInstance.MaxChatHistoryLength,
-			"no_role_prefix":           config.ConfigInstance.NoRolePrefix,
-			"prompt_disable_artifacts": config.ConfigInstance.PromptDisableArtifacts,
-			"enable_mirror_api":        config.ConfigInstance.EnableMirrorApi,
-			"mirror_api_prefix":        config.ConfigInstance.MirrorApiPrefix,
-			"api_key":                  maskAPIKey(config.ConfigInstance.APIKey),
-			"admin_password_set":       strings.TrimSpace(config.ConfigInstance.AdminPassword) != "",
-		},
+		"config":        buildAdminConfigResponse(),
 	}
 
 	c.JSON(http.StatusOK, response)
@@ -263,15 +252,18 @@ func AdminTestSessionHandler(c *gin.Context) {
 
 // UpdateConfigRequest represents the request body for updating config
 type UpdateConfigRequest struct {
-	MaxChatHistoryLength    *int    `json:"max_chat_history_length"`
-	ChatDelete              *bool   `json:"chat_delete"`
-	NoRolePrefix            *bool   `json:"no_role_prefix"`
-	PromptDisableArtifacts  *bool   `json:"prompt_disable_artifacts"`
-	EnableMirrorApi         *bool   `json:"enable_mirror_api"`
-	MirrorApiPrefix         *string `json:"mirror_api_prefix"`
-	APIKey                  *string `json:"api_key"`
-	Proxy                   *string `json:"proxy"`
-	AdminPassword           *string `json:"admin_password"`
+	MaxChatHistoryLength    *int                      `json:"max_chat_history_length"`
+	ChatDelete              *bool                     `json:"chat_delete"`
+	NoRolePrefix            *bool                     `json:"no_role_prefix"`
+	PromptDisableArtifacts  *bool                     `json:"prompt_disable_artifacts"`
+	EnableMirrorApi         *bool                     `json:"enable_mirror_api"`
+	MirrorApiPrefix         *string                   `json:"mirror_api_prefix"`
+	APIKey                  *string                   `json:"api_key"`
+	Proxy                   *string                   `json:"proxy"`
+	AdminPassword           *string                   `json:"admin_password"`
+	GlobalSystemPrompt      *string                   `json:"global_system_prompt_override"`
+	GlobalPromptMode        *string                   `json:"global_prompt_override_mode"`
+	ModelDefinitions        *[]config.ModelDefinition `json:"model_definitions"`
 }
 
 // AdminUpdateConfigHandler handles updating configuration
@@ -328,6 +320,26 @@ func AdminUpdateConfigHandler(c *gin.Context) {
 		config.ConfigInstance.AdminPassword = trimmedPassword
 	}
 
+	if req.GlobalSystemPrompt != nil {
+		config.ConfigInstance.GlobalSystemPromptOverride = strings.TrimSpace(*req.GlobalSystemPrompt)
+	}
+
+	if req.GlobalPromptMode != nil {
+		config.ConfigInstance.GlobalPromptOverrideMode = normalizePromptMode(*req.GlobalPromptMode)
+	}
+
+	if req.ModelDefinitions != nil {
+		definitions := make([]config.ModelDefinition, 0, len(*req.ModelDefinitions))
+		for _, item := range *req.ModelDefinitions {
+			normalized := normalizeModelDefinition(item)
+			if normalized.PublicID == "" {
+				continue
+			}
+			definitions = append(definitions, normalized)
+		}
+		config.ConfigInstance.ModelDefinitions = definitions
+	}
+
 	// Try to save to config.yaml
 	if err := saveConfigToYAML(); err != nil {
 		logger.Error(fmt.Sprintf("Failed to save config to YAML: %v", err))
@@ -335,17 +347,7 @@ func AdminUpdateConfigHandler(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
 			"status":  "updated",
 			"message": "Config updated in memory (could not save to file: " + err.Error() + ")",
-			"config": gin.H{
-				"max_chat_history_length":    config.ConfigInstance.MaxChatHistoryLength,
-				"chat_delete":                config.ConfigInstance.ChatDelete,
-				"no_role_prefix":             config.ConfigInstance.NoRolePrefix,
-				"prompt_disable_artifacts":   config.ConfigInstance.PromptDisableArtifacts,
-				"enable_mirror_api":          config.ConfigInstance.EnableMirrorApi,
-				"mirror_api_prefix":          config.ConfigInstance.MirrorApiPrefix,
-				"api_key":                    maskAPIKey(config.ConfigInstance.APIKey),
-				"proxy":                      config.ConfigInstance.Proxy,
-				"admin_password_set":         strings.TrimSpace(config.ConfigInstance.AdminPassword) != "",
-			},
+			"config": buildAdminConfigResponse(),
 		})
 		return
 	}
@@ -355,17 +357,7 @@ func AdminUpdateConfigHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"status":  "updated",
 		"message": "Config saved successfully",
-		"config": gin.H{
-			"max_chat_history_length":    config.ConfigInstance.MaxChatHistoryLength,
-			"chat_delete":                config.ConfigInstance.ChatDelete,
-			"no_role_prefix":             config.ConfigInstance.NoRolePrefix,
-			"prompt_disable_artifacts":   config.ConfigInstance.PromptDisableArtifacts,
-			"enable_mirror_api":          config.ConfigInstance.EnableMirrorApi,
-			"mirror_api_prefix":          config.ConfigInstance.MirrorApiPrefix,
-			"api_key":                    maskAPIKey(config.ConfigInstance.APIKey),
-			"proxy":                      config.ConfigInstance.Proxy,
-			"admin_password_set":         strings.TrimSpace(config.ConfigInstance.AdminPassword) != "",
-		},
+		"config": buildAdminConfigResponse(),
 	})
 }
 
@@ -456,6 +448,25 @@ func AdminClearLogsHandler(c *gin.Context) {
 	})
 }
 
+func buildAdminConfigResponse() gin.H {
+	return gin.H{
+		"address":                       config.ConfigInstance.Address,
+		"proxy":                         config.ConfigInstance.Proxy,
+		"chat_delete":                   config.ConfigInstance.ChatDelete,
+		"max_chat_history_length":       config.ConfigInstance.MaxChatHistoryLength,
+		"no_role_prefix":                config.ConfigInstance.NoRolePrefix,
+		"prompt_disable_artifacts":      config.ConfigInstance.PromptDisableArtifacts,
+		"enable_mirror_api":             config.ConfigInstance.EnableMirrorApi,
+		"mirror_api_prefix":             config.ConfigInstance.MirrorApiPrefix,
+		"api_key":                       maskAPIKey(config.ConfigInstance.APIKey),
+		"admin_password_set":            strings.TrimSpace(config.ConfigInstance.AdminPassword) != "",
+		"global_system_prompt_override": config.ConfigInstance.GlobalSystemPromptOverride,
+		"global_prompt_override_mode":   normalizePromptMode(config.ConfigInstance.GlobalPromptOverrideMode),
+		"model_definition_count":        len(config.ConfigInstance.ModelDefinitions),
+		"model_definitions":             config.ConfigInstance.ModelDefinitions,
+	}
+}
+
 // saveConfigToYAML saves the current config to config.yaml
 func saveConfigToYAML() error {
 	// Find config file path
@@ -468,17 +479,20 @@ func saveConfigToYAML() error {
 
 	// Build config structure for YAML
 	configData := map[string]interface{}{
-		"sessions":                config.ConfigInstance.Sessions,
-		"address":                 config.ConfigInstance.Address,
-		"apiKey":                  config.ConfigInstance.APIKey,
-		"proxy":                   config.ConfigInstance.Proxy,
-		"chatDelete":              config.ConfigInstance.ChatDelete,
-		"maxChatHistoryLength":    config.ConfigInstance.MaxChatHistoryLength,
-		"noRolePrefix":            config.ConfigInstance.NoRolePrefix,
-		"promptDisableArtifacts":  config.ConfigInstance.PromptDisableArtifacts,
-		"enableMirrorApi":         config.ConfigInstance.EnableMirrorApi,
-		"mirrorApiPrefix":         config.ConfigInstance.MirrorApiPrefix,
-		"adminPassword":           config.ConfigInstance.AdminPassword,
+		"sessions":                   config.ConfigInstance.Sessions,
+		"address":                    config.ConfigInstance.Address,
+		"apiKey":                     config.ConfigInstance.APIKey,
+		"proxy":                      config.ConfigInstance.Proxy,
+		"chatDelete":                 config.ConfigInstance.ChatDelete,
+		"maxChatHistoryLength":       config.ConfigInstance.MaxChatHistoryLength,
+		"noRolePrefix":               config.ConfigInstance.NoRolePrefix,
+		"promptDisableArtifacts":     config.ConfigInstance.PromptDisableArtifacts,
+		"enableMirrorApi":            config.ConfigInstance.EnableMirrorApi,
+		"mirrorApiPrefix":            config.ConfigInstance.MirrorApiPrefix,
+		"adminPassword":              config.ConfigInstance.AdminPassword,
+		"globalSystemPromptOverride": config.ConfigInstance.GlobalSystemPromptOverride,
+		"globalPromptOverrideMode":   normalizePromptMode(config.ConfigInstance.GlobalPromptOverrideMode),
+		"modelDefinitions":           config.ConfigInstance.ModelDefinitions,
 	}
 
 	// Marshal to YAML
@@ -514,12 +528,15 @@ func findConfigPath() string {
 }
 
 func getModelList() []string {
-	return []string{
-		"claude-3-7-sonnet-20250219",
-		"claude-sonnet-4-20250514",
-		"claude-sonnet-4-6-20260217",
-		"claude-opus-4-20250514",
+	resolved := GetResolvedModels()
+	models := make([]string, 0, len(resolved))
+	for _, item := range resolved {
+		if !item.Enabled || !item.Visible {
+			continue
+		}
+		models = append(models, item.PublicID)
 	}
+	return models
 }
 
 // AdminExportSessionsHandler handles exporting sessions to CSV or TXT
