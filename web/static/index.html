@@ -32,6 +32,79 @@
             color: var(--text-main);
         }
 
+        .auth-overlay {
+            position: fixed;
+            inset: 0;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            background: rgba(7, 11, 22, 0.82);
+            backdrop-filter: blur(12px);
+            z-index: 100;
+        }
+
+        .auth-overlay.show {
+            display: flex;
+        }
+
+        .auth-card {
+            width: 100%;
+            max-width: 420px;
+            background: rgba(10, 15, 30, 0.96);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 20px;
+            padding: 28px;
+            box-shadow: 0 18px 48px rgba(0,0,0,0.32);
+        }
+
+        .auth-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .auth-desc {
+            color: var(--text-sub);
+            line-height: 1.6;
+            margin-bottom: 18px;
+        }
+
+        .auth-error {
+            min-height: 22px;
+            margin-top: 12px;
+            color: var(--danger);
+            font-size: 0.9rem;
+        }
+
+        .auth-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 16px;
+        }
+
+        .auth-actions .btn {
+            flex: 1;
+        }
+
+        .topbar-actions {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .auth-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            border-radius: 999px;
+            background: rgba(255,255,255,0.08);
+            color: var(--text-sub);
+            font-size: 0.86rem;
+        }
+
         .app-shell {
             display: flex;
             min-height: 100vh;
@@ -715,8 +788,22 @@
     </style>
 </head>
 <body>
+    <div class="auth-overlay show" id="authOverlay">
+        <div class="auth-card">
+            <div class="auth-title">管理面板登录</div>
+            <div class="auth-desc">访问管理页面前需要输入管理员密码。默认密码为 <code>claude2apidev</code>。</div>
+            <div class="field">
+                <label for="adminPasswordInput">管理员密码</label>
+                <input type="password" id="adminPasswordInput" placeholder="请输入管理密码" onkeydown="handleLoginKeydown(event)">
+            </div>
+            <div class="auth-actions">
+                <button class="btn btn-primary" id="adminLoginBtn" onclick="loginAdmin()">登录</button>
+            </div>
+            <div class="auth-error" id="authError"></div>
+        </div>
+    </div>
     <div class="mobile-overlay" id="mobileOverlay" onclick="toggleDrawer(false)"></div>
-    <div class="app-shell">
+    <div class="app-shell" id="appShell">
         <aside class="sidebar" id="sidebar">
             <div class="sidebar-brand">
                 <h1>🚀 Claude2API</h1>
@@ -755,7 +842,11 @@
                         <h2 id="pageTitle">总览</h2>
                         <p id="pageDescription">查看服务状态、模型列表与接口概览。</p>
                     </div>
-                    <button class="drawer-toggle" onclick="toggleDrawer(true)">☰ 菜单</button>
+                    <div class="topbar-actions">
+                        <span class="auth-badge">🔒 管理页已登录</span>
+                        <button class="btn btn-secondary" onclick="logoutAdmin()">退出登录</button>
+                        <button class="drawer-toggle" onclick="toggleDrawer(true)">☰ 菜单</button>
+                    </div>
                 </div>
 
                 <section class="section active" id="section-overview">
@@ -975,6 +1066,14 @@
                                 </div>
                                 <input type="text" class="config-input" id="proxyInput" placeholder="http://proxy:8080">
                             </div>
+
+                            <div class="config-row">
+                                <div class="config-label">
+                                    <span class="config-label-text">管理页密码</span>
+                                    <span class="config-label-desc">留空表示不修改；默认值为 claude2apidev</span>
+                                </div>
+                                <input type="password" class="config-input" id="adminPasswordConfigInput" placeholder="输入新的管理页密码">
+                            </div>
                         </div>
 
                         <button class="btn btn-primary" style="margin-top:16px; width:100%;" onclick="saveAllConfig()">保存所有配置</button>
@@ -1130,6 +1229,8 @@
         let logsHasMore = false;
         const logsPageSize = 10;
         let testController = null;
+        let adminAuthenticated = false;
+        let autoRefreshTimer = null;
 
         const sectionMeta = {
             overview: {
@@ -1176,9 +1277,127 @@
             toggleDrawer(false);
         }
 
+        function setAuthenticatedState(authenticated) {
+            adminAuthenticated = authenticated;
+            document.getElementById('authOverlay').classList.toggle('show', !authenticated);
+            document.getElementById('appShell').style.visibility = authenticated ? 'visible' : 'hidden';
+            document.getElementById('appShell').style.pointerEvents = authenticated ? 'auto' : 'none';
+            if (!authenticated) {
+                document.getElementById('authError').textContent = '';
+            }
+        }
+
+        async function fetchAdmin(path, options = {}) {
+            const response = await fetch(path, options);
+            if (response.status === 401) {
+                setAuthenticatedState(false);
+                throw new Error('请先登录管理页面');
+            }
+            return response;
+        }
+
+        async function checkAdminAuth() {
+            try {
+                const response = await fetch('/admin-api/auth/status');
+                const data = await response.json();
+                const authenticated = response.ok && data.authenticated === true;
+                setAuthenticatedState(authenticated);
+                if (authenticated) {
+                    startAutoRefresh();
+                    await loadAllData();
+                } else {
+                    stopAutoRefresh();
+                    setTimeout(() => {
+                        const input = document.getElementById('adminPasswordInput');
+                        if (input) input.focus();
+                    }, 50);
+                }
+            } catch (error) {
+                setAuthenticatedState(false);
+                stopAutoRefresh();
+                document.getElementById('authError').textContent = '无法连接管理接口';
+            }
+        }
+
+        async function loginAdmin() {
+            const input = document.getElementById('adminPasswordInput');
+            const button = document.getElementById('adminLoginBtn');
+            const errorElement = document.getElementById('authError');
+            const password = input.value;
+
+            if (!password.trim()) {
+                errorElement.textContent = '请输入管理员密码';
+                input.focus();
+                return;
+            }
+
+            button.disabled = true;
+            button.textContent = '登录中...';
+            errorElement.textContent = '';
+
+            try {
+                const response = await fetch('/admin-api/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password })
+                });
+                const result = await response.json();
+                if (!response.ok) {
+                    throw new Error(result.error || '登录失败');
+                }
+
+                input.value = '';
+                setAuthenticatedState(true);
+                await loadAllData();
+                startAutoRefresh();
+            } catch (error) {
+                setAuthenticatedState(false);
+                errorElement.textContent = error.message;
+            } finally {
+                button.disabled = false;
+                button.textContent = '登录';
+            }
+        }
+
+        async function logoutAdmin() {
+            try {
+                await fetch('/admin-api/logout', { method: 'POST' });
+            } catch (error) {
+                console.error('Failed to logout admin:', error);
+            }
+            stopAutoRefresh();
+            setAuthenticatedState(false);
+            document.getElementById('adminPasswordInput').focus();
+        }
+
+        function handleLoginKeydown(event) {
+            if (event.key === 'Enter') {
+                loginAdmin();
+            }
+        }
+
+        async function loadAllData() {
+            if (!adminAuthenticated) return;
+            await loadData();
+            await Promise.all([loadStats(), loadLogs()]);
+        }
+
+        function startAutoRefresh() {
+            if (autoRefreshTimer) return;
+            autoRefreshTimer = setInterval(() => {
+                loadAllData();
+            }, 30000);
+        }
+
+        function stopAutoRefresh() {
+            if (!autoRefreshTimer) return;
+            clearInterval(autoRefreshTimer);
+            autoRefreshTimer = null;
+        }
+
         async function loadData() {
             try {
-                const response = await fetch('/admin-api/status');
+                const response = await fetchAdmin('/admin-api/status');
                 const data = await response.json();
 
                 document.getElementById('sessionCount').textContent = data.session_count;
@@ -1229,7 +1448,7 @@
 
         async function loadStats() {
             try {
-                const response = await fetch('/admin-api/stats');
+                const response = await fetchAdmin('/admin-api/stats');
                 const data = await response.json();
 
                 const total = data.total_requests || 0;
@@ -1250,7 +1469,7 @@
 
         async function loadLogs() {
             try {
-                const response = await fetch(`/admin-api/logs?page=${logsCurrentPage}&page_size=${logsPageSize}`);
+                const response = await fetchAdmin(`/admin-api/logs?page=${logsCurrentPage}&page_size=${logsPageSize}`);
                 const data = await response.json();
 
                 logsTotalCount = data.total || data.count || 0;
@@ -1330,6 +1549,7 @@
             document.getElementById('maxChatHistoryLength').value = currentConfig.max_chat_history_length || 10000;
             document.getElementById('proxyInput').value = currentConfig.proxy || '';
             document.getElementById('apiKeyInput').placeholder = currentConfig.api_key || '输入新的 API Key';
+            document.getElementById('adminPasswordConfigInput').value = '';
         }
 
         function toggleConfig(key) {
@@ -1366,8 +1586,13 @@
                 configData.api_key = apiKeyValue;
             }
 
+            const adminPasswordValue = document.getElementById('adminPasswordConfigInput').value.trim();
+            if (adminPasswordValue) {
+                configData.admin_password = adminPasswordValue;
+            }
+
             try {
-                const response = await fetch('/admin-api/config', {
+                const response = await fetchAdmin('/admin-api/config', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(configData)
@@ -1379,7 +1604,13 @@
                 }
 
                 btn.textContent = '已保存';
-                loadData();
+                await loadData();
+
+                if (adminPasswordValue) {
+                    alert('管理页密码已更新，请使用新密码重新登录。');
+                    await logoutAdmin();
+                    return;
+                }
             } catch (error) {
                 btn.textContent = '保存失败';
                 alert('保存失败: ' + error.message);
@@ -1428,7 +1659,7 @@
             }
 
             try {
-                const response = await fetch('/admin-api/session', {
+                const response = await fetchAdmin('/admin-api/session', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -1458,7 +1689,7 @@
             if (!confirm('确定要删除这个 Session 吗？')) return;
 
             try {
-                const response = await fetch(`/admin-api/session/${index}`, {
+                const response = await fetchAdmin(`/admin-api/session/${index}`, {
                     method: 'DELETE'
                 });
                 const result = await response.json();
@@ -1482,7 +1713,7 @@
             testBtn.disabled = true;
 
             try {
-                const response = await fetch('/admin-api/session/test', {
+                const response = await fetchAdmin('/admin-api/session/test', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ index })
@@ -1520,7 +1751,7 @@
             if (!confirm('确定要清空所有日志吗？')) return;
 
             try {
-                const response = await fetch('/admin-api/logs', { method: 'DELETE' });
+                const response = await fetchAdmin('/admin-api/logs', { method: 'DELETE' });
                 const result = await response.json();
                 if (!response.ok) {
                     throw new Error(result.error || '清空失败');
@@ -1533,8 +1764,29 @@
             }
         }
 
-        function exportSessions(format) {
-            window.location.href = `/admin-api/sessions/export?format=${format}`;
+        async function exportSessions(format) {
+            try {
+                const response = await fetchAdmin(`/admin-api/sessions/export?format=${format}`);
+                if (!response.ok) {
+                    let message = '导出失败';
+                    try {
+                        const result = await response.json();
+                        message = result.error || message;
+                    } catch (_) {}
+                    throw new Error(message);
+                }
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `sessions.${format}`;
+                document.body.appendChild(link);
+                link.click();
+                link.remove();
+                window.URL.revokeObjectURL(url);
+            } catch (error) {
+                alert('导出失败: ' + error.message);
+            }
         }
 
         async function sendTestMessage() {
@@ -1644,15 +1896,8 @@
             return div.innerHTML;
         }
 
-        loadData();
-        loadStats();
-        loadLogs();
-
-        setInterval(() => {
-            loadData();
-            loadStats();
-            loadLogs();
-        }, 30000);
+        setAuthenticatedState(false);
+        checkAdminAuth();
     </script>
 </body>
 </html>

@@ -39,6 +39,7 @@ type Config struct {
 	PromptDisableArtifacts bool          `yaml:"promptDisableArtifacts"`
 	EnableMirrorApi        bool          `yaml:"enableMirrorApi"`
 	MirrorApiPrefix        string        `yaml:"mirrorApiPrefix"`
+	AdminPassword          string        `yaml:"adminPassword"`
 	RwMutx                 sync.RWMutex  `yaml:"-"` // 不从YAML加载
 }
 
@@ -155,6 +156,9 @@ func loadConfigFromYAML(configPath string) (*Config, error) {
 	if config.Address == "" {
 		config.Address = "0.0.0.0:8080"
 	}
+	if config.AdminPassword == "" {
+		config.AdminPassword = "claude2apidev"
+	}
 
 	return &config, nil
 }
@@ -166,6 +170,10 @@ func loadConfigFromEnv() *Config {
 		maxChatHistoryLength = 10000 // 默认值
 	}
 	retryCount, sessions := parseSessionEnv(os.Getenv("SESSIONS"))
+	adminPassword := os.Getenv("ADMIN_PASSWORD")
+	if adminPassword == "" {
+		adminPassword = "claude2apidev"
+	}
 	config := &Config{
 		// 解析 SESSIONS 环境变量
 		Sessions: sessions,
@@ -190,6 +198,8 @@ func loadConfigFromEnv() *Config {
 		EnableMirrorApi: os.Getenv("ENABLE_MIRROR_API") == "true",
 		// 设置镜像API前缀
 		MirrorApiPrefix: os.Getenv("MIRROR_API_PREFIX"),
+		// 设置管理页密码
+		AdminPassword: adminPassword,
 		// 设置读写锁
 		RwMutx: sync.RWMutex{},
 	}
@@ -260,6 +270,7 @@ func createDefaultConfigFile(config *Config) error {
 		"promptDisableArtifacts":  config.PromptDisableArtifacts,
 		"enableMirrorApi":         config.EnableMirrorApi,
 		"mirrorApiPrefix":         config.MirrorApiPrefix,
+		"adminPassword":           config.AdminPassword,
 	}
 	
 	// 序列化为 YAML

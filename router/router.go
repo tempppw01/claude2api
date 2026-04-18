@@ -18,7 +18,12 @@ func SetupRoutes(r *gin.Engine) {
 	// Health check endpoint
 	r.GET("/health", service.HealthCheckHandler)
 
-	// Admin API endpoint (no auth required)
+	// Admin authentication endpoints
+	r.POST("/admin-api/login", service.AdminLoginHandler)
+	r.GET("/admin-api/auth/status", service.AdminAuthStatusHandler)
+	r.POST("/admin-api/logout", service.AdminLogoutHandler)
+
+	// Admin API endpoint
 	r.GET("/admin-api/status", service.AdminStatusHandler)
 	r.POST("/admin-api/config", service.AdminUpdateConfigHandler)
 	r.POST("/admin-api/session", service.AdminAddSessionHandler)

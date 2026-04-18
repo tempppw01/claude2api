@@ -14,6 +14,8 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+const adminAuthCookieName = "admin_auth"
+
 // AdminStatusHandler handles the admin status endpoint
 func AdminStatusHandler(c *gin.Context) {
 	// Get model list
@@ -49,10 +51,54 @@ func AdminStatusHandler(c *gin.Context) {
 			"enable_mirror_api":        config.ConfigInstance.EnableMirrorApi,
 			"mirror_api_prefix":        config.ConfigInstance.MirrorApiPrefix,
 			"api_key":                  maskAPIKey(config.ConfigInstance.APIKey),
+			"admin_password_set":       strings.TrimSpace(config.ConfigInstance.AdminPassword) != "",
 		},
 	}
 
 	c.JSON(http.StatusOK, response)
+}
+
+type AdminLoginRequest struct {
+	Password string `json:"password" binding:"required"`
+}
+
+// AdminLoginHandler handles admin login and sets auth cookie
+func AdminLoginHandler(c *gin.Context) {
+	var req AdminLoginRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
+		return
+	}
+
+	if strings.TrimSpace(req.Password) != config.ConfigInstance.AdminPassword {
+		clearAdminAuthCookie(c)
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "密码错误"})
+		return
+	}
+
+	c.SetCookie(adminAuthCookieName, config.ConfigInstance.AdminPassword, 86400*7, "/", "", false, true)
+	c.JSON(http.StatusOK, gin.H{"status": "ok"})
+}
+
+// AdminAuthStatusHandler returns current admin auth status
+func AdminAuthStatusHandler(c *gin.Context) {
+	adminToken, err := c.Cookie(adminAuthCookieName)
+	authenticated := err == nil && adminToken == config.ConfigInstance.AdminPassword
+	if !authenticated {
+		clearAdminAuthCookie(c)
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"authenticated": authenticated,
+	})
+}
+
+// AdminLogoutHandler clears admin auth cookie
+func AdminLogoutHandler(c *gin.Context) {
+	clearAdminAuthCookie(c)
+	c.JSON(http.StatusOK, gin.H{
+		"status": "logged_out",
+	})
 }
 
 // maskSessionKey masks the session key for display
@@ -225,6 +271,7 @@ type UpdateConfigRequest struct {
 	MirrorApiPrefix         *string `json:"mirror_api_prefix"`
 	APIKey                  *string `json:"api_key"`
 	Proxy                   *string `json:"proxy"`
+	AdminPassword           *string `json:"admin_password"`
 }
 
 // AdminUpdateConfigHandler handles updating configuration
@@ -272,6 +319,15 @@ func AdminUpdateConfigHandler(c *gin.Context) {
 		config.ConfigInstance.Proxy = *req.Proxy
 	}
 
+	if req.AdminPassword != nil {
+		trimmedPassword := strings.TrimSpace(*req.AdminPassword)
+		if trimmedPassword == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Admin password cannot be empty"})
+			return
+		}
+		config.ConfigInstance.AdminPassword = trimmedPassword
+	}
+
 	// Try to save to config.yaml
 	if err := saveConfigToYAML(); err != nil {
 		logger.Error(fmt.Sprintf("Failed to save config to YAML: %v", err))
@@ -288,6 +344,7 @@ func AdminUpdateConfigHandler(c *gin.Context) {
 				"mirror_api_prefix":          config.ConfigInstance.MirrorApiPrefix,
 				"api_key":                    maskAPIKey(config.ConfigInstance.APIKey),
 				"proxy":                      config.ConfigInstance.Proxy,
+				"admin_password_set":         strings.TrimSpace(config.ConfigInstance.AdminPassword) != "",
 			},
 		})
 		return
@@ -307,6 +364,7 @@ func AdminUpdateConfigHandler(c *gin.Context) {
 			"mirror_api_prefix":          config.ConfigInstance.MirrorApiPrefix,
 			"api_key":                    maskAPIKey(config.ConfigInstance.APIKey),
 			"proxy":                      config.ConfigInstance.Proxy,
+			"admin_password_set":         strings.TrimSpace(config.ConfigInstance.AdminPassword) != "",
 		},
 	})
 }
@@ -331,6 +389,10 @@ func maskCookiePreview(session config.SessionInfo) string {
 		return "-"
 	}
 	return strings.Join(parts, ", ")
+}
+
+func clearAdminAuthCookie(c *gin.Context) {
+	c.SetCookie(adminAuthCookieName, "", -1, "/", "", false, true)
 }
 
 // AdminStatsHandler handles the stats endpoint
@@ -416,6 +478,7 @@ func saveConfigToYAML() error {
 		"promptDisableArtifacts":  config.ConfigInstance.PromptDisableArtifacts,
 		"enableMirrorApi":         config.ConfigInstance.EnableMirrorApi,
 		"mirrorApiPrefix":         config.ConfigInstance.MirrorApiPrefix,
+		"adminPassword":           config.ConfigInstance.AdminPassword,
 	}
 
 	// Marshal to YAML
