@@ -51,6 +51,53 @@ type TokenInfo struct {
 	OutputTokens int `json:"output_tokens"`
 }
 
+type APIError struct {
+	Message   string
+	Retryable bool
+}
+
+func (e *APIError) Error() string {
+	return e.Message
+}
+
+func NewAPIError(message string, retryable bool) error {
+	return &APIError{
+		Message:   message,
+		Retryable: retryable,
+	}
+}
+
+func IsRetryableError(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	var apiErr *APIError
+	if errors.As(err, &apiErr) {
+		return apiErr.Retryable
+	}
+
+	lowerErr := strings.ToLower(err.Error())
+	return strings.Contains(lowerErr, "rate limit") ||
+		strings.Contains(lowerErr, "timeout") ||
+		strings.Contains(lowerErr, "tempor") ||
+		strings.Contains(lowerErr, "connection reset") ||
+		strings.Contains(lowerErr, "unexpected eof")
+}
+
+func GetErrorMessage(err error) string {
+	if err == nil {
+		return ""
+	}
+
+	var apiErr *APIError
+	if errors.As(err, &apiErr) {
+		return apiErr.Message
+	}
+
+	return err.Error()
+}
+
 func NewClient(sessionKey string, proxy string, model string) *Client {
 	client := req.C().ImpersonateChrome().SetTimeout(time.Minute * 5)
 	client.Transport.SetResponseHeaderTimeout(time.Second * 10)
@@ -121,10 +168,13 @@ func (c *Client) GetOrgID() (string, error) {
 		SetHeader("referer", "https://claude.ai/new").
 		Get(url)
 	if err != nil {
-		return "", fmt.Errorf("request failed: %w", err)
+		return "", NewAPIError(fmt.Sprintf("request failed: %v", err), true)
+	}
+	if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
+		return "", NewAPIError(fmt.Sprintf("failed to get organizations: unauthorized status code %d", resp.StatusCode), false)
 	}
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("unexpected status code: %d", resp.StatusCode)
+		return "", NewAPIError(fmt.Sprintf("failed to get organizations: unexpected status code %d", resp.StatusCode), resp.StatusCode >= http.StatusInternalServerError)
 	}
 	type OrgResponse []struct {
 		ID            int    `json:"id"`
@@ -185,10 +235,13 @@ func (c *Client) CreateConversation() (string, error) {
 		SetBody(requestBody).
 		Post(url)
 	if err != nil {
-		return "", fmt.Errorf("request failed: %w", err)
+		return "", NewAPIError(fmt.Sprintf("request failed: %v", err), true)
+	}
+	if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
+		return "", NewAPIError(fmt.Sprintf("failed to create conversation: unauthorized status code %d", resp.StatusCode), false)
 	}
 	if resp.StatusCode != http.StatusCreated {
-		return "", fmt.Errorf("unexpected status code: %d", resp.StatusCode)
+		return "", NewAPIError(fmt.Sprintf("failed to create conversation: unexpected status code %d", resp.StatusCode), resp.StatusCode >= http.StatusInternalServerError)
 	}
 	var result map[string]interface{}
 	// logger.Info(fmt.Sprintf("create conversation response: %s", resp.String()))
@@ -225,25 +278,33 @@ func (c *Client) SendMessage(conversationID string, message string, stream bool,
 		SetBody(requestBody).
 		Post(url)
 	if err != nil {
-		return nil, fmt.Errorf("request failed: %w", err)
+		return nil, NewAPIError(fmt.Sprintf("request failed: %v", err), true)
 	}
 	logger.Info(fmt.Sprintf("Claude response status code: %d", resp.StatusCode))
 	if resp.StatusCode == http.StatusTooManyRequests {
 		// Try to parse rate limit reset time from headers or response body
 		resetInfo := parseRateLimitReset(resp)
 		if resetInfo != "" {
-			return nil, fmt.Errorf("rate limit exceeded - reset at: %s", resetInfo)
+			return nil, NewAPIError(fmt.Sprintf("rate limit exceeded - reset at: %s", resetInfo), true)
 		}
-		return nil, fmt.Errorf("rate limit exceeded")
+		return nil, NewAPIError("rate limit exceeded", true)
+	}
+	if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		if len(bodyBytes) > 0 {
+			return nil, NewAPIError(fmt.Sprintf("authentication failed: %s", string(bodyBytes)), false)
+		}
+		return nil, NewAPIError(fmt.Sprintf("authentication failed with status code %d", resp.StatusCode), false)
 	}
 	if resp.StatusCode != http.StatusOK {
 		// Try to read error body for more details
 		bodyBytes, _ := io.ReadAll(resp.Body)
 		resp.Body.Close()
 		if len(bodyBytes) > 0 {
-			return nil, fmt.Errorf("unexpected status code: %d, response: %s", resp.StatusCode, string(bodyBytes))
+			return nil, NewAPIError(fmt.Sprintf("unexpected status code: %d, response: %s", resp.StatusCode, string(bodyBytes)), resp.StatusCode >= http.StatusInternalServerError)
 		}
-		return nil, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
+		return nil, NewAPIError(fmt.Sprintf("unexpected status code: %d", resp.StatusCode), resp.StatusCode >= http.StatusInternalServerError)
 	}
 	return c.HandleResponse(resp.Body, stream, gc)
 }

@@ -79,18 +79,29 @@ func ChatCompletionsHandler(c *gin.Context) {
 	model := getModelOrDefault(req.Model)
 	index := config.Sr.NextIndex()
 	
-	var lastError string
-	var lastSessionIdx int = -1
+	lastError := "request failed"
+	lastSessionIdx := -1
+	attemptedSessions := 0
+	maxAttempts := config.ConfigInstance.RetryCount
+	if maxAttempts <= 0 {
+		maxAttempts = 1
+	}
+	if sessionCount := len(config.ConfigInstance.Sessions); sessionCount > 0 && maxAttempts > sessionCount {
+		maxAttempts = sessionCount
+	}
 	
 	// Attempt with retry mechanism
-	for i := 0; i < config.ConfigInstance.RetryCount; i++ {
+	for i := 0; i < maxAttempts; i++ {
 		index = (index + 1) % len(config.ConfigInstance.Sessions)
 		lastSessionIdx = index
+		attemptedSessions++
 		session, err := config.ConfigInstance.GetSessionForModel(index)
 		if err != nil {
 			logger.Error(fmt.Sprintf("Failed to get session for model %s: %v", model, err))
 			lastError = err.Error()
-			logger.Info("Retrying another session")
+			if i < maxAttempts-1 {
+				logger.Info("Retrying another session")
+			}
 			continue
 		}
 
@@ -100,21 +111,31 @@ func ChatCompletionsHandler(c *gin.Context) {
 			processor.Prompt.WriteString(processor.RootPrompt.String())
 		}
 		// Initialize client and process request
-		inputTokens, outputTokens, success := handleChatRequestWithTokens(c, session, model, processor, req.Stream)
-		if success {
+		inputTokens, outputTokens, err := handleChatRequestWithTokens(c, session, model, processor, req.Stream)
+		if err == nil {
 			logRequest(c, model, index, inputTokens, outputTokens, true, startTime, "")
 			return // Success, exit the retry loop
 		}
 
-		// If we're here, the request failed - retry with another session
-		lastError = "Request failed"
-		logger.Info("Retrying another session")
+		lastError = core.GetErrorMessage(err)
+		if !core.IsRetryableError(err) {
+			logger.Error(fmt.Sprintf("Request failed with non-retryable error on session %d: %s", index+1, lastError))
+			break
+		}
+		if i < maxAttempts-1 {
+			logger.Info(fmt.Sprintf("Retrying another session after retryable error: %s", lastError))
+		}
 	}
 
-	logger.Error("Failed for all retries")
-	logRequest(c, model, lastSessionIdx, 0, 0, false, startTime, "Failed after all retries: "+lastError)
+	if attemptedSessions > 1 {
+		logger.Error(fmt.Sprintf("Failed after %d attempts", attemptedSessions))
+	} else {
+		logger.Error("Request failed")
+	}
+	logRequest(c, model, lastSessionIdx, 0, 0, false, startTime, lastError)
 	c.JSON(http.StatusInternalServerError, ErrorResponse{
-		Error: "Failed to process request after multiple attempts"})
+		Error: lastError,
+	})
 }
 
 func MirrorChatHandler(c *gin.Context) {
@@ -152,9 +173,9 @@ func MirrorChatHandler(c *gin.Context) {
 	}
 
 	// Process the request with the provided session
-	if !handleChatRequest(c, session, model, processor, req.Stream) {
+	if err := handleChatRequest(c, session, model, processor, req.Stream); err != nil {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{
-			Error: "Failed to process request",
+			Error: core.GetErrorMessage(err),
 		})
 		return
 	}
@@ -205,13 +226,13 @@ func extractSessionFromAuthHeader(c *gin.Context) (config.SessionInfo, error) {
 	return config.SessionInfo{SessionKey: authInfo, OrgID: ""}, nil
 }
 
-func handleChatRequest(c *gin.Context, session config.SessionInfo, model string, processor *utils.ChatRequestProcessor, stream bool) bool {
-	_, _, success := handleChatRequestWithTokens(c, session, model, processor, stream)
-	return success
+func handleChatRequest(c *gin.Context, session config.SessionInfo, model string, processor *utils.ChatRequestProcessor, stream bool) error {
+	_, _, err := handleChatRequestWithTokens(c, session, model, processor, stream)
+	return err
 }
 
 // handleChatRequestWithTokens handles the chat request and returns token counts
-func handleChatRequestWithTokens(c *gin.Context, session config.SessionInfo, model string, processor *utils.ChatRequestProcessor, stream bool) (int, int, bool) {
+func handleChatRequestWithTokens(c *gin.Context, session config.SessionInfo, model string, processor *utils.ChatRequestProcessor, stream bool) (int, int, error) {
 	// Initialize the Claude client
 	claudeClient := core.NewClient(session.SessionKey, config.ConfigInstance.Proxy, model)
 
@@ -220,7 +241,7 @@ func handleChatRequestWithTokens(c *gin.Context, session config.SessionInfo, mod
 		orgId, err := claudeClient.GetOrgID()
 		if err != nil {
 			logger.Error(fmt.Sprintf("Failed to get org ID: %v", err))
-			return 0, 0, false
+			return 0, 0, fmt.Errorf("failed to get org ID: %w", err)
 		}
 		session.OrgID = orgId
 		config.ConfigInstance.SetSessionOrgID(session.SessionKey, session.OrgID)
@@ -233,7 +254,7 @@ func handleChatRequestWithTokens(c *gin.Context, session config.SessionInfo, mod
 		err := claudeClient.UploadFile(processor.ImgDataList)
 		if err != nil {
 			logger.Error(fmt.Sprintf("Failed to upload file: %v", err))
-			return 0, 0, false
+			return 0, 0, fmt.Errorf("failed to upload file: %w", err)
 		}
 	}
 
@@ -248,7 +269,7 @@ func handleChatRequestWithTokens(c *gin.Context, session config.SessionInfo, mod
 	conversationID, err := claudeClient.CreateConversation()
 	if err != nil {
 		logger.Error(fmt.Sprintf("Failed to create conversation: %v", err))
-		return 0, 0, false
+		return 0, 0, err
 	}
 
 	// Send message
@@ -256,7 +277,7 @@ func handleChatRequestWithTokens(c *gin.Context, session config.SessionInfo, mod
 	if err != nil {
 		logger.Error(fmt.Sprintf("Failed to send message: %v", err))
 		go cleanupConversation(claudeClient, conversationID, 3)
-		return 0, 0, false
+		return 0, 0, err
 	}
 
 	// Clean up conversation if enabled
@@ -271,7 +292,7 @@ func handleChatRequestWithTokens(c *gin.Context, session config.SessionInfo, mod
 		outputTokens = tokenInfo.OutputTokens
 	}
 
-	return inputTokens, outputTokens, true
+	return inputTokens, outputTokens, nil
 }
 
 func cleanupConversation(client *core.Client, conversationID string, retry int) {
