@@ -1,6 +1,7 @@
 package service
 
 import (
+	"claude2api/adminauth"
 	"claude2api/config"
 	"claude2api/core"
 	"claude2api/logger"
@@ -13,8 +14,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"gopkg.in/yaml.v3"
 )
-
-const adminAuthCookieName = "admin_auth"
 
 // AdminStatusHandler handles the admin status endpoint
 func AdminStatusHandler(c *gin.Context) {
@@ -65,14 +64,14 @@ func AdminLoginHandler(c *gin.Context) {
 		return
 	}
 
-	c.SetCookie(adminAuthCookieName, config.ConfigInstance.AdminPassword, 86400*7, "/", "", false, true)
+	c.SetCookie(adminauth.CookieName, adminauth.NewToken(config.ConfigInstance.AdminPassword), int(adminauth.SessionDuration.Seconds()), "/", "", false, true)
 	c.JSON(http.StatusOK, gin.H{"status": "ok"})
 }
 
 // AdminAuthStatusHandler returns current admin auth status
 func AdminAuthStatusHandler(c *gin.Context) {
-	adminToken, err := c.Cookie(adminAuthCookieName)
-	authenticated := err == nil && adminToken == config.ConfigInstance.AdminPassword
+	adminToken, err := c.Cookie(adminauth.CookieName)
+	authenticated := err == nil && adminauth.ValidateToken(adminToken, config.ConfigInstance.AdminPassword)
 	if !authenticated {
 		clearAdminAuthCookie(c)
 	}
@@ -384,7 +383,7 @@ func maskCookiePreview(session config.SessionInfo) string {
 }
 
 func clearAdminAuthCookie(c *gin.Context) {
-	c.SetCookie(adminAuthCookieName, "", -1, "/", "", false, true)
+	c.SetCookie(adminauth.CookieName, "", -1, "/", "", false, true)
 }
 
 // AdminStatsHandler handles the stats endpoint

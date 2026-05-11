@@ -345,22 +345,122 @@
             50% { opacity: 0.45; }
         }
 
-        .model-list {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-        }
-
-        .model-tag {
-            background: rgba(255,255,255,0.08);
-            border: 1px solid rgba(255,255,255,0.08);
-            padding: 8px 12px;
-            border-radius: 999px;
-            font-size: 0.85rem;
-            color: var(--text-main);
+        .model-toggle {
             display: inline-flex;
             align-items: center;
+            gap: 10px;
+            border: 1px solid rgba(255,255,255,0.1);
+            background: rgba(255,255,255,0.07);
+            color: var(--text-main);
+            border-radius: 10px;
+            padding: 8px 12px;
+            cursor: pointer;
+            transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+        }
+
+        .model-toggle:hover {
+            background: rgba(255,255,255,0.12);
+            border-color: rgba(142,162,255,0.34);
+            transform: translateY(-1px);
+        }
+
+        .model-count {
+            color: var(--text-sub);
+            font-size: 0.82rem;
+            font-weight: 600;
+        }
+
+        .model-chevron {
+            color: var(--text-sub);
+            font-size: 1rem;
+            line-height: 1;
+            transition: transform 0.28s ease, color 0.2s ease;
+        }
+
+        .model-toggle[aria-expanded="true"] .model-chevron {
+            color: var(--text-main);
+            transform: rotate(180deg);
+        }
+
+        .model-accordion {
+            max-height: 0;
+            overflow: hidden;
+            opacity: 0;
+            transform: translateY(-8px);
+            transition: max-height 0.36s ease, opacity 0.24s ease, transform 0.28s ease;
+        }
+
+        .model-accordion.expanded {
+            max-height: 920px;
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .model-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            padding-top: 4px;
+        }
+
+        .model-group {
+            display: flex;
+            flex-direction: column;
             gap: 8px;
+        }
+
+        .model-group-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-sub);
+            font-size: 0.78rem;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+        }
+
+        .model-group-title::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: rgba(255,255,255,0.08);
+        }
+
+        .model-row {
+            display: grid;
+            grid-template-columns: minmax(260px, 1.3fr) 96px minmax(180px, 1fr);
+            align-items: center;
+            gap: 12px;
+            background: rgba(255,255,255,0.07);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 10px;
+            padding: 10px 12px;
+            color: var(--text-main);
+            transition: border-color 0.2s ease, background 0.2s ease, transform 0.2s ease;
+        }
+
+        .model-row:hover {
+            background: rgba(255,255,255,0.1);
+            border-color: rgba(142,162,255,0.28);
+            transform: translateX(2px);
+        }
+
+        .model-id {
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.84rem;
+            font-weight: 700;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .model-name {
+            color: var(--text-sub);
+            font-size: 0.84rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         .badge {
@@ -368,6 +468,8 @@
             border-radius: 999px;
             font-size: 0.72rem;
             font-weight: 600;
+            justify-self: start;
+            white-space: nowrap;
         }
 
         .badge.free {
@@ -784,6 +886,35 @@
                 grid-template-columns: 1fr;
                 align-items: flex-start;
             }
+
+            .model-card-header {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .model-card-header .card-title {
+                white-space: nowrap;
+            }
+
+            .model-toggle {
+                justify-content: center;
+                width: 100%;
+            }
+
+            .model-count {
+                text-align: center;
+            }
+
+            .model-row {
+                grid-template-columns: 1fr;
+                gap: 8px;
+            }
+
+            .model-id,
+            .model-name {
+                white-space: normal;
+                overflow-wrap: anywhere;
+            }
         }
     </style>
 </head>
@@ -791,7 +922,7 @@
     <div class="auth-overlay show" id="authOverlay">
         <div class="auth-card">
             <div class="auth-title">管理面板登录</div>
-            <div class="auth-desc">访问管理页面前需要输入管理员密码。默认密码为 <code>claude2apidev</code>。</div>
+            <div class="auth-desc">访问管理页面前需要输入管理员密码。</div>
             <div class="field">
                 <label for="adminPasswordInput">管理员密码</label>
                 <input type="password" id="adminPasswordInput" placeholder="请输入管理密码" onkeydown="handleLoginKeydown(event)">
@@ -902,14 +1033,20 @@
                     <div class="subgrid">
                         <div class="section-stack">
                             <div class="card card-full">
-                                <div class="card-header">
+                                <div class="card-header model-card-header">
                                     <div class="card-header-left">
                                         <div class="card-icon models">🤖</div>
                                         <div class="card-title">可用模型</div>
                                     </div>
+                                    <button class="model-toggle" id="modelToggleBtn" type="button" onclick="toggleModelPanel()" aria-expanded="false" title="展开模型列表">
+                                        <span class="model-count" id="modelSummary">加载中</span>
+                                        <span class="model-chevron">⌄</span>
+                                    </button>
                                 </div>
-                                <div class="model-list" id="modelList">
-                                    <span style="color:#9aa4b2;">加载中...</span>
+                                <div class="model-accordion" id="modelAccordion">
+                                    <div class="model-list" id="modelList">
+                                        <span style="color:#9aa4b2;">加载中...</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -1070,7 +1207,7 @@
                             <div class="config-row">
                                 <div class="config-label">
                                     <span class="config-label-text">管理页密码</span>
-                                    <span class="config-label-desc">留空表示不修改；默认值为 claude2apidev</span>
+                                    <span class="config-label-desc">留空表示不修改</span>
                                 </div>
                                 <input type="password" class="config-input" id="adminPasswordConfigInput" placeholder="输入新的管理页密码">
                             </div>
@@ -1306,6 +1443,7 @@
         let testController = null;
         let adminAuthenticated = false;
         let autoRefreshTimer = null;
+        let modelPanelExpanded = false;
 
         const sectionMeta = {
             overview: {
@@ -1503,37 +1641,105 @@
         function renderModels(models) {
             const modelList = document.getElementById('modelList');
             const testModelSelect = document.getElementById('testModel');
+            const modelSummary = document.getElementById('modelSummary');
 
             if (!models.length) {
                 modelList.innerHTML = '<span style="color:#9aa4b2;">暂无模型</span>';
                 testModelSelect.innerHTML = '<option value="">暂无模型</option>';
+                modelSummary.textContent = '0 个模型';
+                updateModelPanelState();
                 return;
             }
 
-            modelList.innerHTML = models.map(model => {
-                const item = typeof model === 'string' ? { id: model } : (model || {});
-                const modelId = item.public_id || item.id || item.upstream_id || '';
-                const displayName = item.display_name || modelId;
-                const tier = String(item.tier || '').toLowerCase();
-                const isPro = tier === 'pro' || modelId.toLowerCase().includes('opus');
-                const badge = isPro
-                    ? '<span class="badge pro">Pro可用</span>'
-                    : '<span class="badge free">免费可用</span>';
-                const meta = displayName && displayName !== modelId
-                    ? `<span style="color:#9aa4b2; font-size:0.82rem;">${escapeHtml(displayName)}</span>`
-                    : '';
-                return `<span class="model-tag">${escapeHtml(modelId)} ${badge}${meta ? `<br>${meta}` : ''}</span>`;
-            }).join('');
+            const normalizedModels = models
+                .map(normalizeModelItem)
+                .filter(model => model.id)
+                .sort(compareModelItems);
 
-            testModelSelect.innerHTML = models.map(model => {
-                const item = typeof model === 'string' ? { id: model } : (model || {});
-                const modelId = item.public_id || item.id || item.upstream_id || '';
-                const displayName = item.display_name || modelId;
+            const freeCount = normalizedModels.filter(model => !model.isPro).length;
+            const proCount = normalizedModels.length - freeCount;
+            modelSummary.textContent = `${normalizedModels.length} 个模型 · 免费 ${freeCount} · Pro ${proCount}`;
+
+            const groups = [
+                { key: 'free', title: '免费可用', models: normalizedModels.filter(model => !model.isPro) },
+                { key: 'pro', title: 'Pro 可用', models: normalizedModels.filter(model => model.isPro) }
+            ].filter(group => group.models.length);
+
+            modelList.innerHTML = groups.map(group => `
+                <div class="model-group">
+                    <div class="model-group-title">${group.title} · ${group.models.length}</div>
+                    ${group.models.map(model => {
+                        const badge = model.isPro
+                            ? '<span class="badge pro">Pro可用</span>'
+                            : '<span class="badge free">免费可用</span>';
+                        return `
+                            <div class="model-row" title="${escapeHtml(model.id)}">
+                                <span class="model-id">${escapeHtml(model.id)}</span>
+                                ${badge}
+                                <span class="model-name">${escapeHtml(model.displayName)}</span>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            `).join('');
+
+            testModelSelect.innerHTML = normalizedModels.map(model => {
+                const modelId = model.id;
+                const displayName = model.displayName;
                 const optionLabel = displayName && displayName !== modelId
                     ? `${modelId} (${displayName})`
                     : modelId;
                 return `<option value="${escapeHtml(modelId)}">${escapeHtml(optionLabel)}</option>`;
             }).join('');
+
+            updateModelPanelState();
+        }
+
+        function toggleModelPanel() {
+            modelPanelExpanded = !modelPanelExpanded;
+            updateModelPanelState();
+        }
+
+        function updateModelPanelState() {
+            const accordion = document.getElementById('modelAccordion');
+            const button = document.getElementById('modelToggleBtn');
+            if (!accordion || !button) return;
+
+            accordion.classList.toggle('expanded', modelPanelExpanded);
+            button.setAttribute('aria-expanded', String(modelPanelExpanded));
+            button.title = modelPanelExpanded ? '收起模型列表' : '展开模型列表';
+        }
+
+        function normalizeModelItem(model) {
+            const item = typeof model === 'string' ? { id: model } : (model || {});
+            const id = item.public_id || item.id || item.upstream_id || '';
+            const displayName = item.display_name || item.displayName || id;
+            const tier = String(item.tier || '').toLowerCase();
+            const lowerId = id.toLowerCase();
+            const isPro = tier === 'pro' || lowerId.includes('opus');
+            const familyRank = lowerId.includes('sonnet') ? 1
+                : lowerId.includes('haiku') ? 2
+                : lowerId.includes('opus') ? 3
+                : 9;
+            const baseId = lowerId.replace(/-think$/, '');
+
+            return {
+                id,
+                displayName,
+                isPro,
+                familyRank,
+                baseId,
+                thinkingRank: lowerId.endsWith('-think') ? 1 : 0
+            };
+        }
+
+        function compareModelItems(a, b) {
+            if (a.isPro !== b.isPro) return a.isPro ? 1 : -1;
+            if (a.familyRank !== b.familyRank) return a.familyRank - b.familyRank;
+            const baseCompare = a.baseId.localeCompare(b.baseId);
+            if (baseCompare !== 0) return baseCompare;
+            if (a.thinkingRank !== b.thinkingRank) return a.thinkingRank - b.thinkingRank;
+            return a.id.localeCompare(b.id);
         }
 
         function renderModelDefinitions() {

@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"claude2api/adminauth"
 	"claude2api/config"
 	"net/http"
 	"strings"
@@ -25,8 +26,8 @@ func AuthMiddleware() gin.HandlerFunc {
 				return
 			}
 
-			adminToken, err := c.Cookie("admin_auth")
-			if err != nil || adminToken != config.ConfigInstance.AdminPassword {
+			adminToken, err := c.Cookie(adminauth.CookieName)
+			if err != nil || !adminauth.ValidateToken(adminToken, config.ConfigInstance.AdminPassword) {
 				c.JSON(http.StatusUnauthorized, gin.H{
 					"error": "Admin authentication required",
 				})
