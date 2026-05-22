@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"gopkg.in/yaml.v3"
@@ -19,18 +20,24 @@ import (
 func AdminStatusHandler(c *gin.Context) {
 	// Get model list
 	models := GetAdminModelSummaries()
+	lastSuccessBySession := logger.GlobalRequestLogger.GetLastSuccessBySession()
 
 	// Build session list (mask sensitive data)
 	sessions := make([]map[string]interface{}, 0)
 	for i, session := range config.ConfigInstance.Sessions {
 		maskedKey := maskSessionKey(session.SessionKey)
+		lastSuccessAt := ""
+		if lastSuccess, ok := lastSuccessBySession[i]; ok {
+			lastSuccessAt = formatChinaTime(lastSuccess)
+		}
 		sessions = append(sessions, map[string]interface{}{
-			"index":          i,
-			"session_key":    maskedKey,
-			"org_id":         session.OrgID,
-			"cf_clearance":   session.CFClearance != "",
-			"cookie_string":  session.CookieString != "",
-			"cookie_preview": maskCookiePreview(session),
+			"index":           i,
+			"session_key":     maskedKey,
+			"org_id":          session.OrgID,
+			"cf_clearance":    session.CFClearance != "",
+			"cookie_string":   session.CookieString != "",
+			"cookie_preview":  maskCookiePreview(session),
+			"last_success_at": lastSuccessAt,
 		})
 	}
 
@@ -384,6 +391,14 @@ func maskCookiePreview(session config.SessionInfo) string {
 
 func clearAdminAuthCookie(c *gin.Context) {
 	c.SetCookie(adminauth.CookieName, "", -1, "/", "", false, true)
+}
+
+func formatChinaTime(t time.Time) string {
+	location, err := time.LoadLocation("Asia/Shanghai")
+	if err != nil {
+		location = time.FixedZone("CST", 8*60*60)
+	}
+	return t.In(location).Format("2006-01-02 15:04:05")
 }
 
 // AdminStatsHandler handles the stats endpoint

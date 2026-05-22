@@ -186,6 +186,23 @@ func (rl *RequestLogger) GetTotalCount() int {
 	return len(rl.logs)
 }
 
+// GetLastSuccessBySession returns the latest successful request time for each session index.
+func (rl *RequestLogger) GetLastSuccessBySession() map[int]time.Time {
+	rl.mu.RLock()
+	defer rl.mu.RUnlock()
+
+	result := make(map[int]time.Time)
+	for _, log := range rl.logs {
+		if !log.Success || log.SessionIdx < 0 {
+			continue
+		}
+		if last, ok := result[log.SessionIdx]; !ok || log.Timestamp.After(last) {
+			result[log.SessionIdx] = log.Timestamp
+		}
+	}
+	return result
+}
+
 // GetLogsByTimeRange returns logs within a time range
 func (rl *RequestLogger) GetLogsByTimeRange(start, end time.Time) []RequestLog {
 	rl.mu.RLock()

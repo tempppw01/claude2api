@@ -717,6 +717,53 @@
             font-size: 0.9rem;
         }
 
+        .logs-table {
+            min-width: 1180px;
+        }
+
+        .logs-table th,
+        .logs-table td {
+            padding: 8px 10px;
+            line-height: 1.25;
+            vertical-align: middle;
+        }
+
+        .logs-table th {
+            white-space: nowrap;
+        }
+
+        .logs-table .log-time {
+            width: 118px;
+            white-space: nowrap;
+        }
+
+        .logs-table .log-context,
+        .logs-table .log-duration,
+        .logs-table .log-tokens {
+            white-space: nowrap;
+        }
+
+        .logs-table .log-session {
+            max-width: 150px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .logs-table .log-model {
+            max-width: 170px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .logs-table .log-error {
+            max-width: 420px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
         .empty-state {
             text-align: center;
             color: var(--text-sub);
@@ -788,6 +835,7 @@
             align-items: center;
             gap: 8px;
             margin-top: 16px;
+            flex-wrap: wrap;
         }
 
         .page-info {
@@ -795,6 +843,34 @@
             text-align: center;
             color: var(--text-sub);
             font-size: 0.86rem;
+        }
+
+        .page-size-group {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: var(--text-sub);
+            font-size: 0.86rem;
+            margin-left: 8px;
+        }
+
+        .page-size-btn {
+            padding: 6px 10px;
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.1);
+            background: rgba(255,255,255,0.06);
+            color: var(--text-sub);
+            cursor: pointer;
+            font-size: 0.82rem;
+            font-weight: 700;
+            transition: all 0.2s ease;
+        }
+
+        .page-size-btn:hover,
+        .page-size-btn.active {
+            color: var(--text-main);
+            border-color: rgba(142,162,255,0.42);
+            background: rgba(102,126,234,0.22);
         }
 
         .api-list {
@@ -1311,11 +1387,12 @@
                                         <th>Session Key</th>
                                         <th>Org ID</th>
                                         <th>附加 Cookie</th>
+                                        <th>最后成功时间</th>
                                         <th style="width:180px;">操作</th>
                                     </tr>
                                 </thead>
                                 <tbody id="sessionTableBody">
-                                    <tr><td colspan="5" class="empty-state">加载中...</td></tr>
+                                    <tr><td colspan="6" class="empty-state">加载中...</td></tr>
                                 </tbody>
                             </table>
                         </div>
@@ -1400,7 +1477,7 @@
                         </div>
 
                         <div class="table-wrap">
-                            <table>
+                            <table class="logs-table">
                                 <thead>
                                     <tr>
                                         <th>时间</th>
@@ -1424,6 +1501,13 @@
                             <button class="btn btn-secondary" onclick="prevLogsPage()" id="prevLogsBtn">上一页</button>
                             <span class="page-info" id="logsPageInfo">1 / 1</span>
                             <button class="btn btn-secondary" onclick="nextLogsPage()" id="nextLogsBtn">下一页</button>
+                            <div class="page-size-group" id="logsPageSizeGroup">
+                                <span>每页</span>
+                                <button class="page-size-btn" type="button" onclick="setLogsPageSize(10)" data-page-size="10">10</button>
+                                <button class="page-size-btn" type="button" onclick="setLogsPageSize(20)" data-page-size="20">20</button>
+                                <button class="page-size-btn" type="button" onclick="setLogsPageSize(50)" data-page-size="50">50</button>
+                                <button class="page-size-btn" type="button" onclick="setLogsPageSize(100)" data-page-size="100">100</button>
+                            </div>
                         </div>
                     </div>
                 </section>
@@ -1439,7 +1523,7 @@
         let logsCurrentPage = 1;
         let logsTotalCount = 0;
         let logsHasMore = false;
-        const logsPageSize = 10;
+        let logsPageSize = 10;
         let testController = null;
         let adminAuthenticated = false;
         let autoRefreshTimer = null;
@@ -1907,7 +1991,7 @@
                 }
 
                 tbody.innerHTML = logs.map(log => {
-                    const time = new Date(log.timestamp).toLocaleString();
+                    const time = formatChinaCompactTime(log.timestamp);
                     const statusClass = log.success ? 'success' : 'error';
                     const statusText = log.success ? '成功' : '失败';
                     const errorType = log.error_type || '-';
@@ -1916,32 +2000,30 @@
                     const tokens = (log.input_tokens > 0 || log.output_tokens > 0)
                         ? `${log.input_tokens}/${log.output_tokens}`
                         : '-';
-                    const errorInfo = log.error ? escapeHtml(log.error) : '-';
+                    const errorInfoText = log.error ? formatRateLimitError(log.error, log.timestamp) : '-';
+                    const errorInfo = escapeHtml(errorInfoText);
 
                     return `
                         <tr>
-                            <td class="mono">${time}</td>
+                            <td class="mono log-time">${time}</td>
                             <td><span class="status-pill ${statusClass}">${statusText}</span></td>
                             <td><span class="error-type-badge">${escapeHtml(errorType)}</span></td>
-                            <td>${contextCount}</td>
-                            <td class="mono">${escapeHtml(sessionLabel)}</td>
-                            <td>${escapeHtml(log.model || '-')}</td>
-                            <td>${log.duration_ms || 0}ms</td>
-                            <td class="mono">${tokens}</td>
-                            <td title="${errorInfo}">${errorInfo}</td>
+                            <td class="log-context">${contextCount}</td>
+                            <td class="mono log-session" title="${escapeHtml(sessionLabel)}">${escapeHtml(sessionLabel)}</td>
+                            <td class="log-model" title="${escapeHtml(log.model || '-')}">${escapeHtml(log.model || '-')}</td>
+                            <td class="log-duration">${log.duration_ms || 0}ms</td>
+                            <td class="mono log-tokens">${tokens}</td>
+                            <td class="log-error" title="${errorInfo}">${errorInfo}</td>
                         </tr>
                     `;
                 }).join('');
 
-                const totalPages = Math.ceil(logsTotalCount / logsPageSize);
-                if (totalPages > 1) {
-                    document.getElementById('logsPagination').style.display = 'flex';
-                    document.getElementById('logsPageInfo').textContent = `${logsCurrentPage} / ${totalPages}`;
-                    document.getElementById('prevLogsBtn').disabled = logsCurrentPage <= 1;
-                    document.getElementById('nextLogsBtn').disabled = !logsHasMore;
-                } else {
-                    document.getElementById('logsPagination').style.display = 'none';
-                }
+                const totalPages = Math.max(1, Math.ceil(logsTotalCount / logsPageSize));
+                document.getElementById('logsPagination').style.display = 'flex';
+                document.getElementById('logsPageInfo').textContent = `${logsCurrentPage} / ${totalPages}`;
+                document.getElementById('prevLogsBtn').disabled = logsCurrentPage <= 1;
+                document.getElementById('nextLogsBtn').disabled = !logsHasMore;
+                updateLogsPageSizeButtons();
             } catch (error) {
                 console.error('Failed to load logs:', error);
             }
@@ -1959,6 +2041,19 @@
                 logsCurrentPage++;
                 loadLogs();
             }
+        }
+
+        function setLogsPageSize(size) {
+            logsPageSize = size;
+            logsCurrentPage = 1;
+            updateLogsPageSizeButtons();
+            loadLogs();
+        }
+
+        function updateLogsPageSizeButtons() {
+            document.querySelectorAll('#logsPageSizeGroup .page-size-btn').forEach(button => {
+                button.classList.toggle('active', Number(button.dataset.pageSize) === logsPageSize);
+            });
         }
 
         function updateConfigUI() {
@@ -2052,7 +2147,7 @@
         function updateSessionTable() {
             const tbody = document.getElementById('sessionTableBody');
             if (!sessions.length) {
-                tbody.innerHTML = '<tr><td colspan="5" class="empty-state">暂无 Session</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="6" class="empty-state">暂无 Session</td></tr>';
                 return;
             }
 
@@ -2062,6 +2157,7 @@
                     <td><code>${escapeHtml(session.session_key)}</code></td>
                     <td>${escapeHtml(session.org_id || '-')}</td>
                     <td title="${escapeHtml(session.cookie_preview || '-')}">${escapeHtml(session.cookie_preview || '-')}</td>
+                    <td class="mono">${escapeHtml(session.last_success_at || '-')}</td>
                     <td>
                         <button class="btn btn-success" onclick="testSession(${index})" style="margin-right:8px; padding:8px 12px;">测试</button>
                         <button class="btn btn-danger" onclick="removeSession(${index})" style="padding:8px 12px;">删除</button>
@@ -2321,6 +2417,77 @@
             const div = document.createElement('div');
             div.textContent = text == null ? '' : String(text);
             return div.innerHTML;
+        }
+
+        function formatChinaDateTime(value) {
+            if (!value) return '-';
+            const date = value instanceof Date ? value : new Date(value);
+            if (Number.isNaN(date.getTime())) return String(value);
+
+            const parts = getChinaDateParts(date);
+            return `${parts.year}-${parts.month}-${parts.day} ${parts.hour}:${parts.minute}:${parts.second}`;
+        }
+
+        function formatChinaCompactTime(value) {
+            if (!value) return '-';
+            const date = value instanceof Date ? value : new Date(value);
+            if (Number.isNaN(date.getTime())) return String(value);
+
+            const parts = getChinaDateParts(date);
+            return `${parts.month}-${parts.day} ${parts.hour}:${parts.minute}:${parts.second}`;
+        }
+
+        function getChinaDateParts(date) {
+            const formatter = new Intl.DateTimeFormat('zh-CN', {
+                timeZone: 'Asia/Shanghai',
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hourCycle: 'h23',
+                hour12: false
+            });
+            const parts = Object.fromEntries(formatter.formatToParts(date).map(part => [part.type, part.value]));
+            return {
+                year: parts.year,
+                month: parts.month,
+                day: parts.day,
+                hour: parts.hour,
+                minute: parts.minute,
+                second: parts.second
+            };
+        }
+
+        function formatRateLimitError(errorText, logTimestamp) {
+            if (!errorText) return '-';
+
+            let result = String(errorText);
+            result = result.replace(/reset at:\s*(\d{1,2}):(\d{2}):(\d{2})\s*UTC/gi, (match, hour, minute, second) => {
+                const resetDate = buildUtcTimeFromLogDate(logTimestamp, hour, minute, second);
+                return `reset at: ${formatChinaDateTime(resetDate)} 中国时间`;
+            });
+            result = result.replace(/"resetsAt"\s*:\s*(\d{10,13})/g, (match, epochText) => {
+                const epoch = Number(epochText);
+                const date = new Date(epochText.length === 13 ? epoch : epoch * 1000);
+                if (Number.isNaN(date.getTime())) return match;
+                return `"resetsAt":"${formatChinaDateTime(date)} 中国时间"`;
+            });
+            return result;
+        }
+
+        function buildUtcTimeFromLogDate(logTimestamp, hour, minute, second) {
+            const base = logTimestamp ? new Date(logTimestamp) : new Date();
+            const safeBase = Number.isNaN(base.getTime()) ? new Date() : base;
+            return new Date(Date.UTC(
+                safeBase.getUTCFullYear(),
+                safeBase.getUTCMonth(),
+                safeBase.getUTCDate(),
+                Number(hour),
+                Number(minute),
+                Number(second)
+            ));
         }
 
         setAuthenticatedState(false);
