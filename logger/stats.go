@@ -34,6 +34,14 @@ type Stats struct {
 	AvgDuration     float64 `json:"avg_duration_ms"`
 }
 
+// SessionStats represents aggregated statistics for a single session.
+type SessionStats struct {
+	TotalRequests   int64   `json:"total_requests"`
+	SuccessRequests int64   `json:"success_requests"`
+	FailedRequests  int64   `json:"failed_requests"`
+	SuccessRate     float64 `json:"success_rate"`
+}
+
 // RequestLogger manages request logging and statistics
 type RequestLogger struct {
 	logs     []RequestLog
@@ -200,6 +208,37 @@ func (rl *RequestLogger) GetLastSuccessBySession() map[int]time.Time {
 			result[log.SessionIdx] = log.Timestamp
 		}
 	}
+	return result
+}
+
+// GetStatsBySession returns request statistics grouped by session index.
+func (rl *RequestLogger) GetStatsBySession() map[int]SessionStats {
+	rl.mu.RLock()
+	defer rl.mu.RUnlock()
+
+	result := make(map[int]SessionStats)
+	for _, log := range rl.logs {
+		if log.SessionIdx < 0 {
+			continue
+		}
+
+		stats := result[log.SessionIdx]
+		stats.TotalRequests++
+		if log.Success {
+			stats.SuccessRequests++
+		} else {
+			stats.FailedRequests++
+		}
+		result[log.SessionIdx] = stats
+	}
+
+	for sessionIdx, stats := range result {
+		if stats.TotalRequests > 0 {
+			stats.SuccessRate = float64(stats.SuccessRequests) / float64(stats.TotalRequests) * 100
+		}
+		result[sessionIdx] = stats
+	}
+
 	return result
 }
 

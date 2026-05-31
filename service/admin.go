@@ -21,6 +21,7 @@ func AdminStatusHandler(c *gin.Context) {
 	// Get model list
 	models := GetAdminModelSummaries()
 	lastSuccessBySession := logger.GlobalRequestLogger.GetLastSuccessBySession()
+	statsBySession := logger.GlobalRequestLogger.GetStatsBySession()
 
 	// Build session list (mask sensitive data)
 	sessions := make([]map[string]interface{}, 0)
@@ -30,6 +31,7 @@ func AdminStatusHandler(c *gin.Context) {
 		if lastSuccess, ok := lastSuccessBySession[i]; ok {
 			lastSuccessAt = formatChinaTime(lastSuccess)
 		}
+		sessionStats := statsBySession[i]
 		sessions = append(sessions, map[string]interface{}{
 			"index":           i,
 			"session_key":     maskedKey,
@@ -38,6 +40,10 @@ func AdminStatusHandler(c *gin.Context) {
 			"cookie_string":   session.CookieString != "",
 			"cookie_preview":  maskCookiePreview(session),
 			"last_success_at": lastSuccessAt,
+			"total_requests":  sessionStats.TotalRequests,
+			"success_requests": sessionStats.SuccessRequests,
+			"failed_requests":  sessionStats.FailedRequests,
+			"success_rate":     sessionStats.SuccessRate,
 		})
 	}
 
