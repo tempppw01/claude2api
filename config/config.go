@@ -56,7 +56,19 @@ type Config struct {
 	GlobalSystemPromptOverride string           `yaml:"globalSystemPromptOverride"`
 	GlobalPromptOverrideMode   string           `yaml:"globalPromptOverrideMode"`
 	ModelDefinitions           []ModelDefinition `yaml:"modelDefinitions"`
+	RequestLogRetention        int              `yaml:"requestLogRetention"`
 	RwMutx                     sync.RWMutex     `yaml:"-"` // 不从YAML加载
+}
+
+const DefaultRequestLogRetention = 1000
+
+func NormalizeRequestLogRetention(value int) int {
+	switch value {
+	case 100, 500, 1000, 3000:
+		return value
+	default:
+		return DefaultRequestLogRetention
+	}
 }
 
 // 解析 SESSION 格式的环境变量
@@ -175,6 +187,7 @@ func loadConfigFromYAML(configPath string) (*Config, error) {
 	if config.AdminPassword == "" {
 		config.AdminPassword = "claude2apidev"
 	}
+	config.RequestLogRetention = NormalizeRequestLogRetention(config.RequestLogRetention)
 
 	return &config, nil
 }
@@ -184,6 +197,10 @@ func loadConfigFromEnv() *Config {
 	maxChatHistoryLength, err := strconv.Atoi(os.Getenv("MAX_CHAT_HISTORY_LENGTH"))
 	if err != nil {
 		maxChatHistoryLength = 10000 // 默认值
+	}
+	requestLogRetention, err := strconv.Atoi(os.Getenv("REQUEST_LOG_RETENTION"))
+	if err != nil {
+		requestLogRetention = DefaultRequestLogRetention
 	}
 	retryCount, sessions := parseSessionEnv(os.Getenv("SESSIONS"))
 	adminPassword := os.Getenv("ADMIN_PASSWORD")
@@ -216,6 +233,8 @@ func loadConfigFromEnv() *Config {
 		MirrorApiPrefix: os.Getenv("MIRROR_API_PREFIX"),
 		// 设置管理页密码
 		AdminPassword: adminPassword,
+		// 设置请求日志保留条数
+		RequestLogRetention: NormalizeRequestLogRetention(requestLogRetention),
 		// 设置读写锁
 		RwMutx: sync.RWMutex{},
 	}
@@ -290,6 +309,7 @@ func createDefaultConfigFile(config *Config) error {
 		"globalSystemPromptOverride": config.GlobalSystemPromptOverride,
 		"globalPromptOverrideMode":   config.GlobalPromptOverrideMode,
 		"modelDefinitions":           config.ModelDefinitions,
+		"requestLogRetention":        config.RequestLogRetention,
 	}
 	
 	// 序列化为 YAML
@@ -369,6 +389,7 @@ func init() {
 		Mutex: sync.Mutex{},
 	}
 	ConfigInstance = LoadConfig()
+	logger.GlobalRequestLogger.SetMaxLogs(ConfigInstance.RequestLogRetention)
 	logger.Info("Loaded config:")
 	logger.Info(fmt.Sprintf("Max Retry count: %d", ConfigInstance.RetryCount))
 	for _, session := range ConfigInstance.Sessions {
@@ -383,4 +404,5 @@ func init() {
 	logger.Info(fmt.Sprintf("PromptDisableArtifacts: %t", ConfigInstance.PromptDisableArtifacts))
 	logger.Info(fmt.Sprintf("EnableMirrorApi: %t", ConfigInstance.EnableMirrorApi))
 	logger.Info(fmt.Sprintf("MirrorApiPrefix: %s", ConfigInstance.MirrorApiPrefix))
+	logger.Info(fmt.Sprintf("RequestLogRetention: %d", ConfigInstance.RequestLogRetention))
 }

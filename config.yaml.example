@@ -28,6 +28,9 @@ maxChatHistoryLength: 10000
 # Retry count (default: number of sessions, max 5)
 retryCount: 2
 
+# Request log retention for admin stats auto cleanup: 100, 500, 1000, or 3000
+requestLogRetention: 1000
+
 # Role prefix settings
 noRolePrefix: false
 

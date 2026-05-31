@@ -276,6 +276,7 @@ type UpdateConfigRequest struct {
 	GlobalSystemPrompt      *string                   `json:"global_system_prompt_override"`
 	GlobalPromptMode        *string                   `json:"global_prompt_override_mode"`
 	ModelDefinitions        *[]config.ModelDefinition `json:"model_definitions"`
+	RequestLogRetention     *int                      `json:"request_log_retention"`
 }
 
 // AdminUpdateConfigHandler handles updating configuration
@@ -350,6 +351,16 @@ func AdminUpdateConfigHandler(c *gin.Context) {
 			definitions = append(definitions, normalized)
 		}
 		config.ConfigInstance.ModelDefinitions = definitions
+	}
+
+	if req.RequestLogRetention != nil {
+		normalizedRetention := config.NormalizeRequestLogRetention(*req.RequestLogRetention)
+		if normalizedRetention != *req.RequestLogRetention {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Request log retention must be one of 100, 500, 1000, 3000"})
+			return
+		}
+		config.ConfigInstance.RequestLogRetention = normalizedRetention
+		logger.GlobalRequestLogger.SetMaxLogs(normalizedRetention)
 	}
 
 	// Try to save to config.yaml
@@ -484,6 +495,7 @@ func buildAdminConfigResponse() gin.H {
 		"global_prompt_override_mode":   normalizePromptMode(config.ConfigInstance.GlobalPromptOverrideMode),
 		"model_definition_count":        len(config.ConfigInstance.ModelDefinitions),
 		"model_definitions":             config.ConfigInstance.ModelDefinitions,
+		"request_log_retention":         config.ConfigInstance.RequestLogRetention,
 	}
 }
 
@@ -513,6 +525,7 @@ func saveConfigToYAML() error {
 		"globalSystemPromptOverride": config.ConfigInstance.GlobalSystemPromptOverride,
 		"globalPromptOverrideMode":   normalizePromptMode(config.ConfigInstance.GlobalPromptOverrideMode),
 		"modelDefinitions":           config.ConfigInstance.ModelDefinitions,
+		"requestLogRetention":        config.ConfigInstance.RequestLogRetention,
 	}
 
 	// Marshal to YAML

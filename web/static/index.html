@@ -874,16 +874,19 @@
             font-size: 0.86rem;
         }
 
-        .page-size-group {
+        .page-size-group,
+        .log-retention-group {
             display: inline-flex;
             align-items: center;
             gap: 6px;
             color: var(--text-sub);
             font-size: 0.86rem;
             margin-left: 8px;
+            flex-wrap: wrap;
         }
 
-        .page-size-btn {
+        .page-size-btn,
+        .log-retention-btn {
             padding: 6px 10px;
             border-radius: 8px;
             border: 1px solid rgba(255,255,255,0.1);
@@ -896,7 +899,9 @@
         }
 
         .page-size-btn:hover,
-        .page-size-btn.active {
+        .page-size-btn.active,
+        .log-retention-btn:hover,
+        .log-retention-btn.active {
             color: var(--text-main);
             border-color: rgba(142,162,255,0.42);
             background: rgba(102,126,234,0.22);
@@ -1500,8 +1505,15 @@
                                 <div class="card-title">请求统计明细</div>
                                 <div class="toolbar-meta">展示时间、失败类型、上下文数、请求 Session、模型、耗时与 Token 信息</div>
                             </div>
-                            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                            <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
                                 <span class="toolbar-meta">共 <span id="totalLogsCount">0</span> 条记录</span>
+                                <div class="log-retention-group" id="logRetentionGroup">
+                                    <span>自动保留</span>
+                                    <button class="log-retention-btn" type="button" onclick="setRequestLogRetention(100)" data-retention="100">100</button>
+                                    <button class="log-retention-btn" type="button" onclick="setRequestLogRetention(500)" data-retention="500">500</button>
+                                    <button class="log-retention-btn" type="button" onclick="setRequestLogRetention(1000)" data-retention="1000">1000</button>
+                                    <button class="log-retention-btn" type="button" onclick="setRequestLogRetention(3000)" data-retention="3000">3000</button>
+                                </div>
                                 <button class="btn btn-secondary" onclick="clearLogs()">清空日志</button>
                             </div>
                         </div>
@@ -2086,6 +2098,44 @@
             });
         }
 
+        async function setRequestLogRetention(retention) {
+            if (Number(currentConfig.request_log_retention || 1000) === retention) {
+                return;
+            }
+
+            const buttons = document.querySelectorAll('#logRetentionGroup .log-retention-btn');
+            buttons.forEach(button => button.disabled = true);
+
+            try {
+                const response = await fetchAdmin('/admin-api/config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ request_log_retention: retention })
+                });
+                const result = await response.json();
+                if (!response.ok) {
+                    throw new Error(result.error || '保存失败');
+                }
+
+                currentConfig = result.config || { ...currentConfig, request_log_retention: retention };
+                logsCurrentPage = 1;
+                updateRequestLogRetentionButtons();
+                await loadData();
+                await Promise.all([loadStats(), loadLogs()]);
+            } catch (error) {
+                alert('保存日志保留条数失败: ' + error.message);
+            } finally {
+                buttons.forEach(button => button.disabled = false);
+            }
+        }
+
+        function updateRequestLogRetentionButtons() {
+            const retention = Number(currentConfig.request_log_retention || 1000);
+            document.querySelectorAll('#logRetentionGroup .log-retention-btn').forEach(button => {
+                button.classList.toggle('active', Number(button.dataset.retention) === retention);
+            });
+        }
+
         function updateConfigUI() {
             document.getElementById('toggleChatDelete').classList.toggle('active', currentConfig.chat_delete !== false);
             document.getElementById('toggleNoRolePrefix').classList.toggle('active', currentConfig.no_role_prefix === true);
@@ -2098,6 +2148,7 @@
             document.getElementById('adminPasswordConfigInput').value = '';
             document.getElementById('globalPromptOverrideMode').value = currentConfig.global_prompt_override_mode || 'append';
             document.getElementById('globalSystemPromptOverride').value = currentConfig.global_system_prompt_override || '';
+            updateRequestLogRetentionButtons();
             resetModelDefinitionForm();
         }
 

@@ -53,7 +53,7 @@ type RequestLogger struct {
 var GlobalRequestLogger *RequestLogger
 
 func init() {
-	GlobalRequestLogger = NewRequestLogger(10000) // Keep last 10000 requests
+	GlobalRequestLogger = NewRequestLogger(1000) // Keep last 1000 requests by default
 }
 
 // NewRequestLogger creates a new request logger
@@ -74,6 +74,21 @@ func (rl *RequestLogger) LogRequest(log RequestLog) {
 	rl.logs = append(rl.logs, log)
 
 	// Trim if exceeds max
+	if len(rl.logs) > rl.maxLogs {
+		rl.logs = rl.logs[len(rl.logs)-rl.maxLogs:]
+	}
+}
+
+// SetMaxLogs updates the retention limit and immediately trims old entries.
+func (rl *RequestLogger) SetMaxLogs(maxLogs int) {
+	if maxLogs <= 0 {
+		return
+	}
+
+	rl.mu.Lock()
+	defer rl.mu.Unlock()
+
+	rl.maxLogs = maxLogs
 	if len(rl.logs) > rl.maxLogs {
 		rl.logs = rl.logs[len(rl.logs)-rl.maxLogs:]
 	}
