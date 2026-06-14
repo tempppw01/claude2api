@@ -819,6 +819,36 @@
             color: var(--danger);
         }
 
+        .session-error-cell {
+            min-width: 150px;
+        }
+
+        .session-error-pill {
+            display: inline-flex;
+            align-items: center;
+            max-width: 180px;
+            padding: 5px 9px;
+            border-radius: 999px;
+            font-size: 0.78rem;
+            font-weight: 700;
+            background: rgba(248,113,113,0.16);
+            color: var(--danger);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .session-error-time {
+            margin-top: 4px;
+            color: var(--text-sub);
+            font-size: 0.76rem;
+            white-space: nowrap;
+        }
+
+        .session-error-empty {
+            color: var(--text-sub);
+        }
+
         .error-type-badge {
             display: inline-block;
             padding: 4px 8px;
@@ -1408,6 +1438,7 @@
                                 <div class="card-title">Session 管理</div>
                             </div>
                             <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                                <button class="btn btn-secondary" id="sessionRefreshBtn" onclick="refreshSessions()">刷新</button>
                                 <button class="btn btn-secondary" onclick="exportSessions('csv')">导出 CSV</button>
                                 <button class="btn btn-secondary" onclick="exportSessions('txt')">导出 TXT</button>
                             </div>
@@ -1423,11 +1454,12 @@
                                         <th>附加 Cookie</th>
                                         <th>最后成功时间</th>
                                         <th>成功率</th>
+                                        <th>最后报错</th>
                                         <th style="width:180px;">操作</th>
                                     </tr>
                                 </thead>
                                 <tbody id="sessionTableBody">
-                                    <tr><td colspan="7" class="empty-state">加载中...</td></tr>
+                                    <tr><td colspan="8" class="empty-state">加载中...</td></tr>
                                 </tbody>
                             </table>
                         </div>
@@ -1761,6 +1793,21 @@
                 document.getElementById('statusDot').className = 'status-dot offline';
                 document.getElementById('statusText').className = 'status-text offline';
                 document.getElementById('statusText').textContent = '连接失败';
+            }
+        }
+
+        async function refreshSessions() {
+            const btn = document.getElementById('sessionRefreshBtn');
+            if (!btn || btn.disabled) return;
+
+            const originalText = btn.textContent;
+            btn.disabled = true;
+            btn.textContent = '刷新中...';
+            try {
+                await loadData();
+            } finally {
+                btn.textContent = originalText;
+                btn.disabled = false;
             }
         }
 
@@ -2228,12 +2275,13 @@
         function updateSessionTable() {
             const tbody = document.getElementById('sessionTableBody');
             if (!sessions.length) {
-                tbody.innerHTML = '<tr><td colspan="7" class="empty-state">暂无 Session</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="8" class="empty-state">暂无 Session</td></tr>';
                 return;
             }
 
             tbody.innerHTML = sessions.map((session, index) => {
                 const rate = formatSessionSuccessRate(session);
+                const lastError = formatSessionLastError(session);
                 return `
                     <tr>
                         <td>${index + 1}</td>
@@ -2242,6 +2290,7 @@
                         <td title="${escapeHtml(session.cookie_preview || '-')}">${escapeHtml(session.cookie_preview || '-')}</td>
                         <td class="mono">${escapeHtml(session.last_success_at || '-')}</td>
                         <td><span class="session-rate-pill ${rate.className}" title="${escapeHtml(rate.title)}">${escapeHtml(rate.text)}</span></td>
+                        <td class="session-error-cell">${lastError}</td>
                         <td>
                             <button class="btn btn-success" onclick="testSession(${index})" style="margin-right:8px; padding:8px 12px;">测试</button>
                             <button class="btn btn-danger" onclick="removeSession(${index})" style="padding:8px 12px;">删除</button>
@@ -2273,6 +2322,33 @@
                 title: `${success}/${total} 成功`,
                 className
             };
+        }
+
+        function formatSessionLastError(session) {
+            const message = String(session.last_error || '').trim();
+            const type = String(session.last_error_type || '').trim();
+            const time = String(session.last_error_at || '').trim();
+            const model = String(session.last_error_model || '').trim();
+
+            if (!message && !type) {
+                return '<span class="session-error-empty">-</span>';
+            }
+
+            const label = type || '报错';
+            const titleParts = [];
+            if (time) titleParts.push(`时间: ${time}`);
+            if (model) titleParts.push(`模型: ${model}`);
+            if (type) titleParts.push(`类型: ${type}`);
+            if (message) titleParts.push(`错误: ${message}`);
+            const title = escapeHtml(titleParts.join('\n'));
+            const timeLine = time ? `<div class="session-error-time">${escapeHtml(time)}</div>` : '';
+
+            return `
+                <div title="${title}">
+                    <span class="session-error-pill">${escapeHtml(label)}</span>
+                    ${timeLine}
+                </div>
+            `;
         }
 
         async function addSession() {

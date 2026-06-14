@@ -226,6 +226,23 @@ func (rl *RequestLogger) GetLastSuccessBySession() map[int]time.Time {
 	return result
 }
 
+// GetLastErrorBySession returns the latest failed request log for each session index.
+func (rl *RequestLogger) GetLastErrorBySession() map[int]RequestLog {
+	rl.mu.RLock()
+	defer rl.mu.RUnlock()
+
+	result := make(map[int]RequestLog)
+	for _, log := range rl.logs {
+		if log.Success || log.SessionIdx < 0 {
+			continue
+		}
+		if last, ok := result[log.SessionIdx]; !ok || log.Timestamp.After(last.Timestamp) {
+			result[log.SessionIdx] = log
+		}
+	}
+	return result
+}
+
 // GetStatsBySession returns request statistics grouped by session index.
 func (rl *RequestLogger) GetStatsBySession() map[int]SessionStats {
 	rl.mu.RLock()
