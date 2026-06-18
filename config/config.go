@@ -63,7 +63,7 @@ type Config struct {
 
 const (
 	DefaultRequestLogRetention = 1000
-	SessionRateLimitCooldown   = 3 * time.Hour
+	SessionRateLimitCooldown   = 5 * time.Hour
 )
 
 func NormalizeRequestLogRetention(value int) int {

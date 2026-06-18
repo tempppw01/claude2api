@@ -313,7 +313,7 @@ curl -X POST http://localhost:8080/v1/chat/completions \
 - `x-ratelimit-reset` 响应头
 - 响应体中的 `reset_at`、`retry_after`、`error.message` 字段
 
-命中限流的 Session Key 会在内存中冷却 3 小时；冷却期间轮询会跳过该 Session，避免反复命中同一个被限流账号。服务重启后冷却状态会清空。
+命中限流的 Session Key 会在内存中冷却 5 小时；冷却期间轮询会跳过该 Session，避免反复命中同一个被限流账号。服务重启后冷却状态会清空。
 
 ## 🤝 贡献
 
