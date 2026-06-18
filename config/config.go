@@ -135,11 +135,19 @@ func (c *Config) CooldownSession(sessionKey string, duration time.Duration) time
 		return time.Time{}
 	}
 
+	return c.CooldownSessionUntil(sessionKey, time.Now().Add(duration))
+}
+
+func (c *Config) CooldownSessionUntil(sessionKey string, until time.Time) time.Time {
+	sessionKey = strings.TrimSpace(sessionKey)
+	if sessionKey == "" || until.IsZero() {
+		return time.Time{}
+	}
+
 	c.RwMutx.Lock()
 	defer c.RwMutx.Unlock()
 
 	c.ensureRuntimeStateLocked()
-	until := time.Now().Add(duration)
 	if existingUntil, exists := c.SessionCooldownUntil[sessionKey]; exists && existingUntil.After(until) {
 		return existingUntil
 	}

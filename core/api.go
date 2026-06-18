@@ -12,6 +12,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -202,8 +203,9 @@ type TokenInfo struct {
 }
 
 type APIError struct {
-	Message   string
-	Retryable bool
+	Message          string
+	Retryable        bool
+	RateLimitResetAt time.Time
 }
 
 func (e *APIError) Error() string {
@@ -215,6 +217,22 @@ func NewAPIError(message string, retryable bool) error {
 		Message:   message,
 		Retryable: retryable,
 	}
+}
+
+func NewRateLimitAPIError(message string, resetAt time.Time) error {
+	return &APIError{
+		Message:          message,
+		Retryable:        true,
+		RateLimitResetAt: resetAt,
+	}
+}
+
+func GetRateLimitResetAt(err error) (time.Time, bool) {
+	var apiErr *APIError
+	if !errors.As(err, &apiErr) || apiErr.RateLimitResetAt.IsZero() {
+		return time.Time{}, false
+	}
+	return apiErr.RateLimitResetAt, true
 }
 
 func IsRetryableError(err error) bool {
@@ -606,9 +624,9 @@ func (c *Client) SendMessage(conversationID string, message string, stream bool,
 	logger.Info(fmt.Sprintf("Claude response status code: %d", resp.StatusCode))
 	if resp.StatusCode == http.StatusTooManyRequests {
 		// Try to parse rate limit reset time from headers or response body
-		resetInfo := parseRateLimitReset(resp)
+		resetAt, resetInfo := parseRateLimitReset(resp)
 		if resetInfo != "" {
-			return nil, NewAPIError(fmt.Sprintf("rate limit exceeded - reset at: %s", resetInfo), true)
+			return nil, NewRateLimitAPIError(fmt.Sprintf("rate limit exceeded - reset at: %s", resetInfo), resetAt)
 		}
 		return nil, NewAPIError("rate limit exceeded", true)
 	}
@@ -632,27 +650,32 @@ func (c *Client) SendMessage(conversationID string, message string, stream bool,
 	return c.HandleResponse(resp.Body, stream, gc)
 }
 
-// parseRateLimitReset attempts to extract rate limit reset time from response
-func parseRateLimitReset(resp *req.Response) string {
+// parseRateLimitReset attempts to extract rate limit reset time from response.
+func parseRateLimitReset(resp *req.Response) (time.Time, string) {
+	now := time.Now()
+
 	// Try standard Retry-After header (seconds or date)
 	if retryAfter := resp.Header.Get("Retry-After"); retryAfter != "" {
-		// Check if it's a number (seconds) or a date
-		if seconds, err := strconv.Atoi(retryAfter); err == nil {
-			resetTime := time.Now().Add(time.Duration(seconds) * time.Second)
-			return resetTime.Format("15:04:05 MST")
+		if resetAt, ok := parseRateLimitResetValue(retryAfter, now, true); ok {
+			return resetAt, resetAt.Format(time.RFC3339)
 		}
-		// It might be a date string
-		return retryAfter
+		return time.Time{}, retryAfter
 	}
 
 	// Try x-ratelimit-reset header
 	if reset := resp.Header.Get("x-ratelimit-reset"); reset != "" {
-		return reset
+		if resetAt, ok := parseRateLimitResetValue(reset, now, false); ok {
+			return resetAt, resetAt.Format(time.RFC3339)
+		}
+		return time.Time{}, reset
 	}
 
 	// Try other common rate limit headers
 	if reset := resp.Header.Get("X-RateLimit-Reset"); reset != "" {
-		return reset
+		if resetAt, ok := parseRateLimitResetValue(reset, now, false); ok {
+			return resetAt, resetAt.Format(time.RFC3339)
+		}
+		return time.Time{}, reset
 	}
 
 	// Try to parse from response body
@@ -662,23 +685,158 @@ func parseRateLimitReset(resp *req.Response) string {
 		if err == nil && len(bodyBytes) > 0 {
 			var body map[string]interface{}
 			if json.Unmarshal(bodyBytes, &body) == nil {
-				// Check common fields
-				if reset, ok := body["reset_at"].(string); ok {
-					return reset
-				}
-				if reset, ok := body["retry_after"].(string); ok {
-					return reset
-				}
-				if reset, ok := body["error"].(map[string]interface{}); ok {
-					if msg, ok := reset["message"].(string); ok {
-						return msg
+				if resetAt, raw, ok := findRateLimitResetInJSON(body, now); ok {
+					if !resetAt.IsZero() {
+						return resetAt, resetAt.Format(time.RFC3339)
 					}
+					return time.Time{}, raw
 				}
 			}
+			bodyText := string(bodyBytes)
+			if resetAt, ok := parseRateLimitResetValue(bodyText, now, false); ok {
+				return resetAt, resetAt.Format(time.RFC3339)
+			}
+			return time.Time{}, bodyText
 		}
 	}
 
-	return ""
+	return time.Time{}, ""
+}
+
+func findRateLimitResetInJSON(value interface{}, now time.Time) (time.Time, string, bool) {
+	switch typed := value.(type) {
+	case map[string]interface{}:
+		for key, child := range typed {
+			lowerKey := strings.ToLower(key)
+			if strings.Contains(lowerKey, "reset") || strings.Contains(lowerKey, "retry") || strings.Contains(lowerKey, "until") {
+				if resetAt, raw, ok := parseRateLimitResetJSONValue(child, now); ok {
+					return resetAt, raw, true
+				}
+			}
+		}
+		for _, child := range typed {
+			if resetAt, raw, ok := findRateLimitResetInJSON(child, now); ok {
+				return resetAt, raw, true
+			}
+		}
+	case []interface{}:
+		for _, child := range typed {
+			if resetAt, raw, ok := findRateLimitResetInJSON(child, now); ok {
+				return resetAt, raw, true
+			}
+		}
+	case string:
+		if resetAt, ok := parseRateLimitResetValue(typed, now, false); ok {
+			return resetAt, typed, true
+		}
+	}
+	return time.Time{}, "", false
+}
+
+func parseRateLimitResetJSONValue(value interface{}, now time.Time) (time.Time, string, bool) {
+	switch typed := value.(type) {
+	case string:
+		if resetAt, ok := parseRateLimitResetValue(typed, now, false); ok {
+			return resetAt, typed, true
+		}
+		if strings.TrimSpace(typed) != "" {
+			return time.Time{}, typed, true
+		}
+	case float64:
+		raw := strconv.FormatFloat(typed, 'f', -1, 64)
+		if resetAt, ok := parseRateLimitResetValue(raw, now, false); ok {
+			return resetAt, raw, true
+		}
+	}
+	return time.Time{}, "", false
+}
+
+func parseRateLimitResetValue(raw string, now time.Time, numericAsDuration bool) (time.Time, bool) {
+	raw = strings.TrimSpace(strings.Trim(raw, `"'`))
+	if raw == "" {
+		return time.Time{}, false
+	}
+
+	if seconds, err := strconv.ParseFloat(raw, 64); err == nil {
+		if numericAsDuration {
+			return now.Add(time.Duration(seconds) * time.Second), true
+		}
+		if seconds > 1e12 {
+			return time.UnixMilli(int64(seconds)), true
+		}
+		if seconds > 1e9 {
+			return time.Unix(int64(seconds), 0), true
+		}
+		if seconds > 0 {
+			return now.Add(time.Duration(seconds) * time.Second), true
+		}
+	}
+
+	if parsed, err := http.ParseTime(raw); err == nil {
+		return parsed, true
+	}
+	for _, layout := range []struct {
+		value       string
+		hasTimezone bool
+	}{
+		{time.RFC3339Nano, true},
+		{time.RFC3339, true},
+		{"2006-01-02T15:04:05.000Z", true},
+		{"2006-01-02 15:04:05", false},
+		{"2006-01-02 15:04", false},
+	} {
+		if layout.hasTimezone {
+			parsed, err := time.Parse(layout.value, raw)
+			if err == nil {
+				return parsed, true
+			}
+			continue
+		}
+		if parsed, err := time.ParseInLocation(layout.value, raw, time.Local); err == nil {
+			return parsed, true
+		}
+	}
+
+	if parsed, ok := parseClockResetTime(raw, now); ok {
+		return parsed, true
+	}
+	return time.Time{}, false
+}
+
+func parseClockResetTime(raw string, now time.Time) (time.Time, bool) {
+	patterns := []struct {
+		regex  *regexp.Regexp
+		layout string
+	}{
+		{regexp.MustCompile(`(?i)(?:until|after|at|reset(?:s)?\s+at)?\s*(\d{1,2}:\d{2}(?::\d{2})?\s*(?:am|pm))`), "3:04 PM"},
+		{regexp.MustCompile(`(?i)(?:until|after|at|reset(?:s)?\s+at)?\s*(\d{1,2}:\d{2}(?::\d{2})?)`), "15:04"},
+	}
+
+	for _, pattern := range patterns {
+		matches := pattern.regex.FindStringSubmatch(raw)
+		if len(matches) < 2 {
+			continue
+		}
+		value := strings.ToUpper(strings.TrimSpace(matches[1]))
+		layout := pattern.layout
+		if strings.Count(value, ":") == 2 {
+			if strings.Contains(layout, "PM") {
+				layout = "3:04:05 PM"
+			} else {
+				layout = "15:04:05"
+			}
+		}
+		clock, err := time.ParseInLocation(layout, value, time.Local)
+		if err != nil {
+			continue
+		}
+		resetAt := time.Date(now.Year(), now.Month(), now.Day(), clock.Hour(), clock.Minute(), clock.Second(), 0, time.Local)
+		if !resetAt.After(now) || strings.Contains(strings.ToLower(raw), "tomorrow") {
+			resetAt = resetAt.Add(24 * time.Hour)
+		}
+		return resetAt, true
+	}
+	return time.Time{}, false
 }
 
 // HandleResponse converts Claude's SSE format to OpenAI format and writes to the response writer

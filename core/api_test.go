@@ -3,6 +3,7 @@ package core
 import (
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestCitationCollectorExtractsDeduplicatedSources(t *testing.T) {
@@ -38,5 +39,31 @@ func TestCitationCollectorExtractsDeduplicatedSources(t *testing.T) {
 	}
 	if !strings.Contains(markdown, "2. [news.example](https://news.example/article)") {
 		t.Fatalf("expected host fallback citation in markdown, got %q", markdown)
+	}
+}
+
+func TestParseRateLimitResetValueFromRetryAfterSeconds(t *testing.T) {
+	now := time.Date(2026, 6, 18, 19, 30, 0, 0, time.Local)
+
+	resetAt, ok := parseRateLimitResetValue("120", now, true)
+	if !ok {
+		t.Fatal("expected retry-after seconds to parse")
+	}
+	if !resetAt.Equal(now.Add(2 * time.Minute)) {
+		t.Fatalf("expected reset at %s, got %s", now.Add(2*time.Minute), resetAt)
+	}
+}
+
+func TestParseRateLimitResetValueFromClockText(t *testing.T) {
+	now := time.Date(2026, 6, 18, 19, 30, 0, 0, time.Local)
+
+	resetAt, ok := parseRateLimitResetValue("You are out of free messages until 10:40 PM", now, false)
+	if !ok {
+		t.Fatal("expected clock reset text to parse")
+	}
+
+	expected := time.Date(2026, 6, 18, 22, 40, 0, 0, time.Local)
+	if !resetAt.Equal(expected) {
+		t.Fatalf("expected reset at %s, got %s", expected, resetAt)
 	}
 }

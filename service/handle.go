@@ -134,7 +134,13 @@ func ChatCompletionsHandler(c *gin.Context) {
 
 		lastError = core.GetErrorMessage(err)
 		if core.IsRateLimitError(err) {
-			cooldownUntil := config.ConfigInstance.CooldownSession(session.SessionKey, config.SessionRateLimitCooldown)
+			cooldownUntil := time.Time{}
+			if resetAt, ok := core.GetRateLimitResetAt(err); ok {
+				cooldownUntil = config.ConfigInstance.CooldownSessionUntil(session.SessionKey, resetAt)
+			}
+			if cooldownUntil.IsZero() {
+				cooldownUntil = config.ConfigInstance.CooldownSession(session.SessionKey, config.SessionRateLimitCooldown)
+			}
 			logger.Error(fmt.Sprintf(
 				"Session %d (%s) hit rate limit; cooling down until %s",
 				index+1,
