@@ -11,10 +11,13 @@ import (
 )
 
 type ChatCompletionRequest struct {
-	Model    string                   `json:"model"`
-	Messages []map[string]interface{} `json:"messages"`
-	Stream   bool                     `json:"stream"`
-	Tools    []map[string]interface{} `json:"tools,omitempty"`
+	Model           string                   `json:"model"`
+	Messages        []map[string]interface{} `json:"messages"`
+	Stream          bool                     `json:"stream"`
+	Tools           []map[string]interface{} `json:"tools,omitempty"`
+	ReasoningEffort string                   `json:"reasoning_effort,omitempty"`
+	Thinking        map[string]interface{}   `json:"thinking,omitempty"`
+	OutputConfig    map[string]interface{}   `json:"output_config,omitempty"`
 }
 
 // OpenAISrteamResponse 定义 OpenAI 的流式响应结构
@@ -46,10 +49,10 @@ type Delta struct {
 	Content string `json:"content"`
 }
 type Message struct {
-	Role       string        `json:"role"`
-	Content    string        `json:"content"`
-	Refusal    interface{}   `json:"refusal"`
-	Annotation []interface{} `json:"annotation"`
+	Role        string        `json:"role"`
+	Content     string        `json:"content"`
+	Refusal     interface{}   `json:"refusal"`
+	Annotations []interface{} `json:"annotations,omitempty"`
 }
 
 type OpenAIResponse struct {
@@ -67,10 +70,14 @@ type Usage struct {
 }
 
 func ReturnOpenAIResponse(text string, stream bool, gc *gin.Context) error {
+	return ReturnOpenAIResponseWithAnnotations(text, stream, nil, gc)
+}
+
+func ReturnOpenAIResponseWithAnnotations(text string, stream bool, annotations []interface{}, gc *gin.Context) error {
 	if stream {
 		return streamRespose(text, gc)
 	} else {
-		return noStreamResponse(text, gc)
+		return noStreamResponse(text, annotations, gc)
 	}
 }
 
@@ -106,7 +113,7 @@ func streamRespose(text string, gc *gin.Context) error {
 	return nil
 }
 
-func noStreamResponse(text string, gc *gin.Context) error {
+func noStreamResponse(text string, annotations []interface{}, gc *gin.Context) error {
 	openAIResp := &OpenAIResponse{
 		ID:      uuid.New().String(),
 		Object:  "chat.completion",
@@ -116,8 +123,9 @@ func noStreamResponse(text string, gc *gin.Context) error {
 			{
 				Index: 0,
 				Message: Message{
-					Role:    "assistant",
-					Content: text,
+					Role:        "assistant",
+					Content:     text,
+					Annotations: annotations,
 				},
 				Logprobs:     nil,
 				FinishReason: "stop",

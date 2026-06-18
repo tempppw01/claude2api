@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -25,6 +26,8 @@ type Client struct {
 	orgID        string
 	client       *req.Client
 	model        string
+	thinkingMode string
+	effortLevel  string
 	defaultAttrs map[string]interface{}
 }
 
@@ -44,6 +47,152 @@ type ResponseEvent struct {
 	Error struct {
 		Message string `json:"message"`
 	} `json:"error"`
+}
+
+const maxCitationSources = 10
+
+type citationSource struct {
+	Title string
+	URL   string
+}
+
+type citationCollector struct {
+	seen    map[string]struct{}
+	sources []citationSource
+}
+
+func newCitationCollector() *citationCollector {
+	return &citationCollector{
+		seen: make(map[string]struct{}),
+	}
+}
+
+func (c *citationCollector) AddFrom(value interface{}) {
+	if c == nil || len(c.sources) >= maxCitationSources {
+		return
+	}
+
+	switch typed := value.(type) {
+	case map[string]interface{}:
+		if rawURL := findCitationURL(typed); rawURL != "" {
+			c.add(findCitationTitle(typed), rawURL)
+		}
+		for _, child := range typed {
+			c.AddFrom(child)
+			if len(c.sources) >= maxCitationSources {
+				return
+			}
+		}
+	case []interface{}:
+		for _, child := range typed {
+			c.AddFrom(child)
+			if len(c.sources) >= maxCitationSources {
+				return
+			}
+		}
+	}
+}
+
+func (c *citationCollector) add(title string, rawURL string) {
+	if c == nil || len(c.sources) >= maxCitationSources {
+		return
+	}
+	rawURL = strings.TrimSpace(rawURL)
+	if !isHTTPURL(rawURL) {
+		return
+	}
+	if _, ok := c.seen[rawURL]; ok {
+		return
+	}
+	c.seen[rawURL] = struct{}{}
+	title = strings.TrimSpace(title)
+	if title == "" {
+		title = citationTitleFromURL(rawURL)
+	}
+	c.sources = append(c.sources, citationSource{Title: title, URL: rawURL})
+}
+
+func (c *citationCollector) Markdown() string {
+	if c == nil || len(c.sources) == 0 {
+		return ""
+	}
+	var builder strings.Builder
+	builder.WriteString("\n\n来源：")
+	for index, source := range c.sources {
+		title := source.Title
+		if title == "" {
+			title = source.URL
+		}
+		builder.WriteString(fmt.Sprintf("\n%d. [%s](%s)", index+1, escapeMarkdownLinkText(title), source.URL))
+	}
+	return builder.String()
+}
+
+func (c *citationCollector) Annotations() []interface{} {
+	if c == nil || len(c.sources) == 0 {
+		return nil
+	}
+	annotations := make([]interface{}, 0, len(c.sources))
+	for _, source := range c.sources {
+		annotations = append(annotations, map[string]interface{}{
+			"type": "url_citation",
+			"url_citation": map[string]interface{}{
+				"url":   source.URL,
+				"title": source.Title,
+			},
+		})
+	}
+	return annotations
+}
+
+func findCitationURL(value map[string]interface{}) string {
+	for _, key := range []string{"url", "uri", "source_url", "web_url", "href"} {
+		if raw, ok := value[key].(string); ok && isHTTPURL(raw) {
+			return raw
+		}
+	}
+	for key, raw := range value {
+		key = strings.ToLower(key)
+		if !strings.Contains(key, "url") && !strings.Contains(key, "uri") && !strings.Contains(key, "href") {
+			continue
+		}
+		if rawString, ok := raw.(string); ok && isHTTPURL(rawString) {
+			return rawString
+		}
+	}
+	return ""
+}
+
+func findCitationTitle(value map[string]interface{}) string {
+	for _, key := range []string{"title", "name", "source_title", "site_name", "domain"} {
+		if raw, ok := value[key].(string); ok && strings.TrimSpace(raw) != "" {
+			return raw
+		}
+	}
+	return ""
+}
+
+func isHTTPURL(raw string) bool {
+	parsed, err := url.Parse(strings.TrimSpace(raw))
+	if err != nil {
+		return false
+	}
+	return parsed.Scheme == "http" || parsed.Scheme == "https"
+}
+
+func citationTitleFromURL(raw string) string {
+	parsed, err := url.Parse(raw)
+	if err != nil || parsed.Host == "" {
+		return raw
+	}
+	return parsed.Host
+}
+
+func escapeMarkdownLinkText(text string) string {
+	text = strings.ReplaceAll(text, "\\", "\\\\")
+	text = strings.ReplaceAll(text, "[", "\\[")
+	text = strings.ReplaceAll(text, "]", "\\]")
+	return text
 }
 
 // TokenInfo represents token usage information
@@ -118,7 +267,16 @@ func NewClient(sessionKey string, proxy string, model string) *Client {
 	return NewClientFromSession(config.SessionInfo{SessionKey: sessionKey}, proxy, model)
 }
 
-func NewClientFromSession(session config.SessionInfo, proxy string, model string) *Client {
+type ClientOption func(*Client)
+
+func WithThinkingOptions(thinkingMode string, effortLevel string) ClientOption {
+	return func(c *Client) {
+		c.thinkingMode = normalizeWebThinkingMode(thinkingMode)
+		c.effortLevel = normalizeWebEffortLevel(effortLevel)
+	}
+}
+
+func NewClientFromSession(session config.SessionInfo, proxy string, model string, opts ...ClientOption) *Client {
 	client := req.C().ImpersonateChrome().SetTimeout(time.Minute * 5)
 	client.Transport.SetResponseHeaderTimeout(time.Second * 10)
 	if proxy != "" {
@@ -171,7 +329,36 @@ func NewClientFromSession(session config.SessionInfo, proxy string, model string
 			"timezone":            "America/Los_Angeles",
 		},
 	}
+	for _, opt := range opts {
+		opt(c)
+	}
 	return c
+}
+
+func normalizeWebThinkingMode(mode string) string {
+	switch strings.ToLower(strings.TrimSpace(mode)) {
+	case "enabled", "on", "extended", "thinking":
+		return "extended"
+	case "auto", "adaptive":
+		return strings.ToLower(strings.TrimSpace(mode))
+	default:
+		return ""
+	}
+}
+
+func normalizeWebEffortLevel(effort string) string {
+	switch strings.ToLower(strings.TrimSpace(effort)) {
+	case "low", "medium", "high", "max":
+		return strings.ToLower(strings.TrimSpace(effort))
+	case "maximum":
+		return "max"
+	default:
+		return ""
+	}
+}
+
+func isUnsupportedRequestShapeStatus(statusCode int) bool {
+	return statusCode == http.StatusBadRequest || statusCode == http.StatusUnprocessableEntity
 }
 
 func applySessionCookies(client *req.Client, session config.SessionInfo) {
@@ -284,10 +471,18 @@ func (c *Client) CreateConversation() (string, error) {
 		return "", errors.New("organization ID not set")
 	}
 	url := fmt.Sprintf("https://claude.ai/api/organizations/%s/chat_conversations", c.orgID)
+	thinkingMode := c.thinkingMode
+	hasThinkingSuffix := strings.HasSuffix(c.model, "-think")
 	// 如果以-think结尾
 	if strings.HasSuffix(c.model, "-think") {
 		c.model = strings.TrimSuffix(c.model, "-think")
-		if err := c.UpdateUserSetting("paprika_mode", "extended"); err != nil {
+	}
+	if hasThinkingSuffix || thinkingMode != "" {
+		if thinkingMode == "" {
+			thinkingMode = "extended"
+		}
+		c.thinkingMode = thinkingMode
+		if err := c.UpdateUserSetting("paprika_mode", thinkingMode); err != nil {
 			logger.Error(fmt.Sprintf("Failed to update paprika_mode: %v", err))
 		}
 	} else {
@@ -295,11 +490,26 @@ func (c *Client) CreateConversation() (string, error) {
 			logger.Error(fmt.Sprintf("Failed to update paprika_mode: %v", err))
 		}
 	}
+	if c.effortLevel != "" {
+		if err := c.UpdateUserSetting("effort_level", c.effortLevel); err != nil {
+			logger.Error(fmt.Sprintf("Failed to update effort_level: %v", err))
+		}
+	} else {
+		if err := c.UpdateUserSetting("effort_level", nil); err != nil {
+			logger.Error(fmt.Sprintf("Failed to clear effort_level: %v", err))
+		}
+	}
 	requestBody := map[string]interface{}{
 		"model":                            c.model,
 		"uuid":                             uuid.New().String(),
 		"name":                             "",
 		"include_conversation_preferences": true,
+	}
+	if thinkingMode != "" {
+		requestBody["thinking_mode"] = thinkingMode
+	}
+	if c.effortLevel != "" {
+		requestBody["effort_level"] = c.effortLevel
 	}
 	if c.model == "claude-sonnet-4-20250514" || c.model == "claude-sonnet-4-6-20260217" {
 		// 删除model - 免费模型不需要发送model字段
@@ -315,6 +525,20 @@ func (c *Client) CreateConversation() (string, error) {
 	}
 	if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
 		return "", NewAPIError(fmt.Sprintf("failed to create conversation: unauthorized status code %d", resp.StatusCode), false)
+	}
+	if isUnsupportedRequestShapeStatus(resp.StatusCode) && (thinkingMode != "" || c.effortLevel != "") {
+		delete(requestBody, "thinking_mode")
+		delete(requestBody, "effort_level")
+		resp, err = c.client.R().
+			SetHeader("referer", "https://claude.ai/new").
+			SetBody(requestBody).
+			Post(url)
+		if err != nil {
+			return "", NewAPIError(fmt.Sprintf("request failed: %v", err), true)
+		}
+		if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
+			return "", NewAPIError(fmt.Sprintf("failed to create conversation: unauthorized status code %d", resp.StatusCode), false)
+		}
 	}
 	if resp.StatusCode != http.StatusCreated {
 		return "", NewAPIError(fmt.Sprintf("failed to create conversation: unexpected status code %d", resp.StatusCode), resp.StatusCode >= http.StatusInternalServerError)
@@ -342,6 +566,12 @@ func (c *Client) SendMessage(conversationID string, message string, stream bool,
 	// Create request body with default attributes
 	requestBody := c.defaultAttrs
 	requestBody["prompt"] = message
+	if c.thinkingMode != "" {
+		requestBody["thinking_mode"] = c.thinkingMode
+	}
+	if c.effortLevel != "" {
+		requestBody["effort_level"] = c.effortLevel
+	}
 	if c.model != "claude-sonnet-4-20250514" && c.model != "claude-sonnet-4-6-20260217" {
 		requestBody["model"] = c.model
 	}
@@ -355,6 +585,23 @@ func (c *Client) SendMessage(conversationID string, message string, stream bool,
 		Post(url)
 	if err != nil {
 		return nil, NewAPIError(fmt.Sprintf("request failed: %v", err), true)
+	}
+	if isUnsupportedRequestShapeStatus(resp.StatusCode) && (c.thinkingMode != "" || c.effortLevel != "") {
+		if resp.Body != nil {
+			resp.Body.Close()
+		}
+		delete(requestBody, "thinking_mode")
+		delete(requestBody, "effort_level")
+		resp, err = c.client.R().DisableAutoReadResponse().
+			SetHeader("referer", fmt.Sprintf("https://claude.ai/chat/%s", conversationID)).
+			SetHeader("accept", "text/event-stream, text/event-stream").
+			SetHeader("anthropic-client-platform", "web_claude_ai").
+			SetHeader("cache-control", "no-cache").
+			SetBody(requestBody).
+			Post(url)
+		if err != nil {
+			return nil, NewAPIError(fmt.Sprintf("request failed: %v", err), true)
+		}
 	}
 	logger.Info(fmt.Sprintf("Claude response status code: %d", resp.StatusCode))
 	if resp.StatusCode == http.StatusTooManyRequests {
@@ -456,6 +703,7 @@ func (c *Client) HandleResponse(body io.ReadCloser, stream bool, gc *gin.Context
 	useToolEnd := false
 	nextLanguage := false
 	languageStr := "md"
+	citations := newCitationCollector()
 	// Token tracking
 	inputTokens := 0
 	outputTokens := 0
@@ -474,6 +722,13 @@ func (c *Client) HandleResponse(body io.ReadCloser, stream bool, gc *gin.Context
 			continue
 		}
 		data := line[6:]
+		if data == "[DONE]" {
+			break
+		}
+		var rawEvent map[string]interface{}
+		if err := json.Unmarshal([]byte(data), &rawEvent); err == nil {
+			citations.AddFrom(rawEvent)
+		}
 		var event ResponseEvent
 		if err := json.Unmarshal([]byte(data), &event); err == nil {
 			if event.Type == "error" && event.Error.Message != "" {
@@ -596,8 +851,15 @@ func (c *Client) HandleResponse(body io.ReadCloser, stream bool, gc *gin.Context
 	if err := scanner.Err(); err != nil {
 		return nil, fmt.Errorf("error reading response: %w", err)
 	}
+	sourceMarkdown := citations.Markdown()
+	if sourceMarkdown != "" {
+		res_all_text += sourceMarkdown
+		if stream {
+			model.ReturnOpenAIResponse(sourceMarkdown, stream, gc)
+		}
+	}
 	if !stream {
-		model.ReturnOpenAIResponse(res_all_text, stream, gc)
+		model.ReturnOpenAIResponseWithAnnotations(res_all_text, stream, citations.Annotations(), gc)
 	} else {
 		// 发送结束标志
 		gc.Writer.Write([]byte("data: [DONE]\n\n"))
@@ -799,6 +1061,8 @@ func (c *Client) UpdateUserSetting(key string, value interface{}) error {
 		"enabled_geolocation":              nil,
 		"enabled_mcp_tools":                nil,
 		"paprika_mode":                     nil,
+		"thinking_mode":                    nil,
+		"effort_level":                     nil,
 		"enabled_monkeys_in_a_barrel":      nil,
 	}
 

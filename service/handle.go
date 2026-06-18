@@ -68,6 +68,7 @@ func ChatCompletionsHandler(c *gin.Context) {
 
 	// Get model or use default
 	selectedModel := ResolveModel(getModelOrDefault(req.Model))
+	applyRequestThinkingOptions(&selectedModel, req)
 	promptOverride, promptMode := resolvePromptOverride(selectedModel)
 	processor.SetPromptOverride(promptOverride, promptMode)
 	processor.ProcessMessages(req.Messages)
@@ -125,7 +126,7 @@ func ChatCompletionsHandler(c *gin.Context) {
 			processor.Prompt.WriteString(processor.RootPrompt.String())
 		}
 		// Initialize client and process request
-		inputTokens, outputTokens, err := handleChatRequestWithTokens(c, session, model, processor, req.Stream)
+		inputTokens, outputTokens, err := handleChatRequestWithTokens(c, session, model, processor, req.Stream, selectedModel.ThinkingMode, selectedModel.EffortLevel)
 		if err == nil {
 			logRequest(c, model, index, inputTokens, outputTokens, true, startTime, "")
 			return // Success, exit the retry loop
@@ -187,6 +188,7 @@ func MirrorChatHandler(c *gin.Context) {
 
 	// Get model or use default
 	selectedModel := ResolveModel(getModelOrDefault(req.Model))
+	applyRequestThinkingOptions(&selectedModel, req)
 	promptOverride, promptMode := resolvePromptOverride(selectedModel)
 	processor.SetPromptOverride(promptOverride, promptMode)
 	processor.ProcessMessages(req.Messages)
@@ -205,7 +207,7 @@ func MirrorChatHandler(c *gin.Context) {
 	}
 
 	// Process the request with the provided session
-	if err := handleChatRequest(c, session, model, processor, req.Stream); err != nil {
+	if err := handleChatRequest(c, session, model, processor, req.Stream, selectedModel.ThinkingMode, selectedModel.EffortLevel); err != nil {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{
 			Error: core.GetErrorMessage(err),
 		})
@@ -242,6 +244,84 @@ func getModelOrDefault(model string) string {
 	return model
 }
 
+func applyRequestThinkingOptions(selected *ResolvedModelSelection, req *model.ChatCompletionRequest) {
+	if selected == nil || req == nil {
+		return
+	}
+
+	if effort := normalizeEffortLevel(req.ReasoningEffort); effort != "" {
+		selected.Thinking = true
+		selected.EffortLevel = effort
+	}
+	if effort := normalizeOutputConfigEffort(req.OutputConfig); effort != "" {
+		selected.Thinking = true
+		selected.EffortLevel = effort
+	}
+
+	if mode, ok := normalizeThinkingMode(req.Thinking); ok {
+		if mode == "" {
+			selected.Thinking = false
+			selected.ThinkingMode = ""
+			selected.EffortLevel = ""
+			return
+		}
+		selected.Thinking = true
+		selected.ThinkingMode = mode
+	}
+
+	if selected.Thinking && selected.ThinkingMode == "" {
+		selected.ThinkingMode = "extended"
+	}
+}
+
+func normalizeOutputConfigEffort(outputConfig map[string]interface{}) string {
+	if outputConfig == nil {
+		return ""
+	}
+	if effort, ok := outputConfig["effort"].(string); ok {
+		return normalizeEffortLevel(effort)
+	}
+	return ""
+}
+
+func normalizeEffortLevel(effort string) string {
+	switch strings.ToLower(strings.TrimSpace(effort)) {
+	case "low", "medium", "high", "max":
+		return strings.ToLower(strings.TrimSpace(effort))
+	case "maximum":
+		return "max"
+	default:
+		return ""
+	}
+}
+
+func normalizeThinkingMode(thinking map[string]interface{}) (string, bool) {
+	if thinking == nil {
+		return "", false
+	}
+	if enabled, ok := thinking["enabled"].(bool); ok {
+		if enabled {
+			return "extended", true
+		}
+		return "", true
+	}
+	for _, key := range []string{"type", "mode", "thinking_mode"} {
+		value, ok := thinking[key].(string)
+		if !ok {
+			continue
+		}
+		switch strings.ToLower(strings.TrimSpace(value)) {
+		case "enabled", "on", "extended", "thinking":
+			return "extended", true
+		case "auto", "adaptive":
+			return strings.ToLower(strings.TrimSpace(value)), true
+		case "disabled", "off", "none":
+			return "", true
+		}
+	}
+	return "", false
+}
+
 func extractSessionFromAuthHeader(c *gin.Context) (config.SessionInfo, error) {
 	authInfo := c.Request.Header.Get("Authorization")
 	authInfo = strings.TrimPrefix(authInfo, "Bearer ")
@@ -268,15 +348,15 @@ func resolvePromptOverride(selectedModel ResolvedModelSelection) (string, string
 	return "", "append"
 }
 
-func handleChatRequest(c *gin.Context, session config.SessionInfo, model string, processor *utils.ChatRequestProcessor, stream bool) error {
-	_, _, err := handleChatRequestWithTokens(c, session, model, processor, stream)
+func handleChatRequest(c *gin.Context, session config.SessionInfo, model string, processor *utils.ChatRequestProcessor, stream bool, thinkingMode string, effortLevel string) error {
+	_, _, err := handleChatRequestWithTokens(c, session, model, processor, stream, thinkingMode, effortLevel)
 	return err
 }
 
 // handleChatRequestWithTokens handles the chat request and returns token counts
-func handleChatRequestWithTokens(c *gin.Context, session config.SessionInfo, model string, processor *utils.ChatRequestProcessor, stream bool) (int, int, error) {
+func handleChatRequestWithTokens(c *gin.Context, session config.SessionInfo, model string, processor *utils.ChatRequestProcessor, stream bool, thinkingMode string, effortLevel string) (int, int, error) {
 	// Initialize the Claude client
-	claudeClient := core.NewClientFromSession(session, config.ConfigInstance.Proxy, model)
+	claudeClient := core.NewClientFromSession(session, config.ConfigInstance.Proxy, model, core.WithThinkingOptions(thinkingMode, effortLevel))
 
 	// Get org ID if not already set
 	if session.OrgID == "" {

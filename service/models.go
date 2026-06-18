@@ -19,6 +19,7 @@ type ResolvedModel struct {
 	Notes                string `json:"notes,omitempty"`
 	VariantOf            string `json:"variant_of,omitempty"`
 	VariantType          string `json:"variant_type,omitempty"`
+	EffortLevel          string `json:"effort_level,omitempty"`
 	Source               string `json:"source"`
 }
 
@@ -29,36 +30,42 @@ type ResolvedModelSelection struct {
 	DisplayName          string
 	Tier                 string
 	Thinking             bool
+	ThinkingMode         string
+	EffortLevel          string
 	RemoveModelField     bool
 	SystemPromptOverride string
 	PromptOverrideMode   string
 }
 
+var supportedEffortLevels = []string{"low", "medium", "high", "max"}
+
 var builtinModelDefinitions = []config.ModelDefinition{
 	{
 		PublicID:         "claude-3-7-sonnet-20250219",
 		UpstreamID:       "claude-3-7-sonnet-20250219",
-		DisplayName:      "Claude 3.7 Sonnet",
+		DisplayName:      "Claude 3.7 Sonnet (Legacy ID)",
 		Tier:             "free",
 		SupportsThinking: true,
 		Enabled:          true,
-		Visible:          true,
+		Visible:          false,
+		Notes:            "Hidden legacy ID kept for direct request compatibility",
 	},
 	{
 		PublicID:         "claude-sonnet-4-20250514",
 		UpstreamID:       "claude-sonnet-4-20250514",
-		DisplayName:      "Claude Sonnet 4.5",
+		DisplayName:      "Claude Sonnet 4.5 (Legacy ID)",
 		Tier:             "free",
 		SupportsThinking: true,
 		Enabled:          true,
-		Visible:          true,
+		Visible:          false,
+		Notes:            "Hidden legacy ID kept for direct request compatibility",
 	},
 	{
 		PublicID:         "claude-sonnet-4-6",
 		UpstreamID:       "claude-sonnet-4-6-20260217",
 		DisplayName:      "Claude Sonnet 4.6",
 		Tier:             "free",
-		SupportsThinking: false,
+		SupportsThinking: true,
 		Enabled:          true,
 		Visible:          true,
 	},
@@ -67,50 +74,65 @@ var builtinModelDefinitions = []config.ModelDefinition{
 		UpstreamID:       "claude-sonnet-4-6-20260217",
 		DisplayName:      "Claude Sonnet 4.6 (Legacy ID)",
 		Tier:             "free",
-		SupportsThinking: false,
+		SupportsThinking: true,
 		Enabled:          true,
-		Visible:          true,
-		Notes:            "Legacy upstream-compatible model ID",
+		Visible:          false,
+		Notes:            "Hidden legacy upstream-compatible model ID",
 	},
 	{
 		PublicID:         "claude-haiku-4-5",
-		UpstreamID:       "claude-sonnet-4-20250514",
+		UpstreamID:       "claude-haiku-4-5-20251001",
 		DisplayName:      "Claude Haiku 4.5",
 		Tier:             "free",
 		SupportsThinking: false,
 		Enabled:          true,
 		Visible:          true,
-		Notes:            "Mapped to current stable upstream until dedicated haiku upstream ID is configured",
 	},
 	{
-		PublicID:         "claude-opus-3",
-		UpstreamID:       "claude-opus-4-20250514",
-		DisplayName:      "Claude Opus 3",
-		Tier:             "pro",
+		PublicID:         "claude-haiku-4-5-20251001",
+		UpstreamID:       "claude-haiku-4-5-20251001",
+		DisplayName:      "Claude Haiku 4.5 (Legacy ID)",
+		Tier:             "free",
 		SupportsThinking: false,
 		Enabled:          true,
+		Visible:          false,
+		Notes:            "Hidden legacy upstream-compatible model ID",
+	},
+	{
+		PublicID:         "claude-opus-4-8",
+		UpstreamID:       "claude-opus-4-8",
+		DisplayName:      "Claude Opus 4.8",
+		Tier:             "pro",
+		SupportsThinking: true,
+		Enabled:          true,
 		Visible:          true,
-		Notes:            "Alias kept for admin-side maintenance",
 	},
 	{
 		PublicID:         "claude-opus-4-6",
-		UpstreamID:       "claude-opus-4-20250514",
+		UpstreamID:       "claude-opus-4-6",
 		DisplayName:      "Claude Opus 4.6",
 		Tier:             "pro",
 		SupportsThinking: true,
 		Enabled:          true,
 		Visible:          true,
-		Notes:            "Alias kept for admin-side maintenance",
 	},
 	{
 		PublicID:         "claude-opus-4-7",
-		UpstreamID:       "claude-opus-4-20250514",
+		UpstreamID:       "claude-opus-4-7",
 		DisplayName:      "Claude Opus 4.7",
 		Tier:             "pro",
 		SupportsThinking: true,
 		Enabled:          true,
 		Visible:          true,
-		Notes:            "Alias kept for admin-side maintenance",
+	},
+	{
+		PublicID:         "claude-opus-3",
+		UpstreamID:       "claude-opus-3",
+		DisplayName:      "Claude Opus 3",
+		Tier:             "pro",
+		SupportsThinking: false,
+		Enabled:          true,
+		Visible:          true,
 	},
 	{
 		PublicID:         "claude-opus-4-20250514",
@@ -119,8 +141,18 @@ var builtinModelDefinitions = []config.ModelDefinition{
 		Tier:             "pro",
 		SupportsThinking: true,
 		Enabled:          true,
-		Visible:          true,
-		Notes:            "Legacy upstream-compatible model ID",
+		Visible:          false,
+		Notes:            "Hidden legacy upstream-compatible model ID",
+	},
+	{
+		PublicID:         "claude-fable-5",
+		UpstreamID:       "claude-fable-5",
+		DisplayName:      "Claude Fable 5",
+		Tier:             "pro",
+		SupportsThinking: true,
+		Enabled:          false,
+		Visible:          false,
+		Notes:            "Currently unavailable on claude.ai",
 	},
 }
 
@@ -136,11 +168,14 @@ func GetResolvedModels() []ResolvedModel {
 		merged[item.PublicID] = normalizeModelDefinition(item)
 	}
 
-	resolved := make([]ResolvedModel, 0, len(merged)*2)
+	resolved := make([]ResolvedModel, 0, len(merged)*(len(supportedEffortLevels)+2))
 	for _, item := range merged {
-		resolved = append(resolved, buildResolvedModel(item, false))
+		resolved = append(resolved, buildResolvedModel(item, false, ""))
 		if item.SupportsThinking && item.Enabled && item.Visible {
-			resolved = append(resolved, buildResolvedModel(item, true))
+			resolved = append(resolved, buildResolvedModel(item, true, ""))
+			for _, effort := range supportedEffortLevels {
+				resolved = append(resolved, buildResolvedModel(item, true, effort))
+			}
 		}
 	}
 
@@ -157,8 +192,7 @@ func ResolveModel(requested string) ResolvedModelSelection {
 		requested = "claude-3-7-sonnet-20250219"
 	}
 
-	isThinking := strings.HasSuffix(requested, "-think")
-	baseID := strings.TrimSuffix(requested, "-think")
+	baseID, isThinking, effortLevel := splitModelModifiers(requested)
 
 	definitions := make(map[string]config.ModelDefinition)
 	for _, item := range builtinModelDefinitions {
@@ -178,16 +212,23 @@ func ResolveModel(requested string) ResolvedModelSelection {
 			UpstreamID:       baseID,
 			DisplayName:      baseID,
 			Tier:             "unknown",
-			SupportsThinking: isThinking,
+			SupportsThinking: isThinking || effortLevel != "",
 			Enabled:          true,
 			Visible:          true,
 		})
 	}
 
-	thinking := isThinking && selected.SupportsThinking
+	thinking := (isThinking || effortLevel != "") && selected.SupportsThinking
 	publicID := selected.PublicID
 	if thinking {
 		publicID += "-think"
+		if effortLevel != "" {
+			publicID += "-" + effortLevel
+		}
+	}
+	thinkingMode := ""
+	if thinking {
+		thinkingMode = "extended"
 	}
 
 	return ResolvedModelSelection{
@@ -197,10 +238,41 @@ func ResolveModel(requested string) ResolvedModelSelection {
 		DisplayName:          selected.DisplayName,
 		Tier:                 selected.Tier,
 		Thinking:             thinking,
+		ThinkingMode:         thinkingMode,
+		EffortLevel:          effortLevel,
 		RemoveModelField:     shouldRemoveModelField(selected.UpstreamID),
 		SystemPromptOverride: selected.SystemPromptOverride,
 		PromptOverrideMode:   normalizePromptMode(selected.PromptOverrideMode),
 	}
+}
+
+func splitModelModifiers(requested string) (string, bool, string) {
+	baseID := requested
+	isThinking := false
+	effortLevel := ""
+
+	for {
+		changed := false
+		if strings.HasSuffix(baseID, "-think") {
+			baseID = strings.TrimSuffix(baseID, "-think")
+			isThinking = true
+			changed = true
+		}
+		for _, effort := range supportedEffortLevels {
+			suffix := "-" + effort
+			if strings.HasSuffix(baseID, suffix) {
+				baseID = strings.TrimSuffix(baseID, suffix)
+				effortLevel = effort
+				changed = true
+				break
+			}
+		}
+		if !changed {
+			break
+		}
+	}
+
+	return baseID, isThinking, effortLevel
 }
 
 func GetAdminModelSummaries() []map[string]interface{} {
@@ -218,6 +290,7 @@ func GetAdminModelSummaries() []map[string]interface{} {
 			"visible":                item.Visible,
 			"variant_of":             item.VariantOf,
 			"variant_type":           item.VariantType,
+			"effort_level":           item.EffortLevel,
 			"source":                 item.Source,
 			"has_system_prompt":      strings.TrimSpace(item.SystemPromptOverride) != "",
 			"prompt_override_mode":   item.PromptOverrideMode,
@@ -237,7 +310,7 @@ func shouldRemoveModelField(upstreamID string) bool {
 	}
 }
 
-func buildResolvedModel(item config.ModelDefinition, thinking bool) ResolvedModel {
+func buildResolvedModel(item config.ModelDefinition, thinking bool, effortLevel string) ResolvedModel {
 	publicID := item.PublicID
 	variantOf := ""
 	variantType := "base"
@@ -245,6 +318,10 @@ func buildResolvedModel(item config.ModelDefinition, thinking bool) ResolvedMode
 		variantOf = item.PublicID
 		variantType = "thinking"
 		publicID = item.PublicID + "-think"
+		if effortLevel != "" {
+			variantType = "thinking_" + effortLevel
+			publicID += "-" + effortLevel
+		}
 	}
 
 	return ResolvedModel{
@@ -260,6 +337,7 @@ func buildResolvedModel(item config.ModelDefinition, thinking bool) ResolvedMode
 		Notes:                item.Notes,
 		VariantOf:            variantOf,
 		VariantType:          variantType,
+		EffortLevel:          effortLevel,
 		Source:               "config",
 	}
 }
