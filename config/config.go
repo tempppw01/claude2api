@@ -41,26 +41,30 @@ type ModelDefinition struct {
 }
 
 type Config struct {
-	Sessions                   []SessionInfo    `yaml:"sessions"`
-	Address                    string           `yaml:"address"`
-	APIKey                     string           `yaml:"apiKey"`
-	Proxy                      string           `yaml:"proxy"`
-	ChatDelete                 bool             `yaml:"chatDelete"`
-	MaxChatHistoryLength       int              `yaml:"maxChatHistoryLength"`
-	RetryCount                 int              `yaml:"retryCount"`
-	NoRolePrefix               bool             `yaml:"noRolePrefix"`
-	PromptDisableArtifacts     bool             `yaml:"promptDisableArtifacts"`
-	EnableMirrorApi            bool             `yaml:"enableMirrorApi"`
-	MirrorApiPrefix            string           `yaml:"mirrorApiPrefix"`
-	AdminPassword              string           `yaml:"adminPassword"`
-	GlobalSystemPromptOverride string           `yaml:"globalSystemPromptOverride"`
-	GlobalPromptOverrideMode   string           `yaml:"globalPromptOverrideMode"`
-	ModelDefinitions           []ModelDefinition `yaml:"modelDefinitions"`
-	RequestLogRetention        int              `yaml:"requestLogRetention"`
-	RwMutx                     sync.RWMutex     `yaml:"-"` // 不从YAML加载
+	Sessions                   []SessionInfo        `yaml:"sessions"`
+	Address                    string               `yaml:"address"`
+	APIKey                     string               `yaml:"apiKey"`
+	Proxy                      string               `yaml:"proxy"`
+	ChatDelete                 bool                 `yaml:"chatDelete"`
+	MaxChatHistoryLength       int                  `yaml:"maxChatHistoryLength"`
+	RetryCount                 int                  `yaml:"retryCount"`
+	NoRolePrefix               bool                 `yaml:"noRolePrefix"`
+	PromptDisableArtifacts     bool                 `yaml:"promptDisableArtifacts"`
+	EnableMirrorApi            bool                 `yaml:"enableMirrorApi"`
+	MirrorApiPrefix            string               `yaml:"mirrorApiPrefix"`
+	AdminPassword              string               `yaml:"adminPassword"`
+	GlobalSystemPromptOverride string               `yaml:"globalSystemPromptOverride"`
+	GlobalPromptOverrideMode   string               `yaml:"globalPromptOverrideMode"`
+	ModelDefinitions           []ModelDefinition    `yaml:"modelDefinitions"`
+	RequestLogRetention        int                  `yaml:"requestLogRetention"`
+	SessionCooldownUntil       map[string]time.Time `yaml:"-" json:"-"`
+	RwMutx                     sync.RWMutex         `yaml:"-"` // 不从YAML加载
 }
 
-const DefaultRequestLogRetention = 1000
+const (
+	DefaultRequestLogRetention = 1000
+	SessionRateLimitCooldown   = 3 * time.Hour
+)
 
 func NormalizeRequestLogRetention(value int) int {
 	switch value {
@@ -117,6 +121,68 @@ func (c *Config) GetSessionForModel(idx int) (SessionInfo, error) {
 	c.RwMutx.RLock()
 	defer c.RwMutx.RUnlock()
 	return c.Sessions[idx], nil
+}
+
+func (c *Config) ensureRuntimeStateLocked() {
+	if c.SessionCooldownUntil == nil {
+		c.SessionCooldownUntil = make(map[string]time.Time)
+	}
+}
+
+func (c *Config) CooldownSession(sessionKey string, duration time.Duration) time.Time {
+	sessionKey = strings.TrimSpace(sessionKey)
+	if sessionKey == "" || duration <= 0 {
+		return time.Time{}
+	}
+
+	c.RwMutx.Lock()
+	defer c.RwMutx.Unlock()
+
+	c.ensureRuntimeStateLocked()
+	until := time.Now().Add(duration)
+	if existingUntil, exists := c.SessionCooldownUntil[sessionKey]; exists && existingUntil.After(until) {
+		return existingUntil
+	}
+	c.SessionCooldownUntil[sessionKey] = until
+	return until
+}
+
+func (c *Config) ClearSessionCooldown(sessionKey string) {
+	sessionKey = strings.TrimSpace(sessionKey)
+	if sessionKey == "" {
+		return
+	}
+
+	c.RwMutx.Lock()
+	defer c.RwMutx.Unlock()
+
+	c.ensureRuntimeStateLocked()
+	delete(c.SessionCooldownUntil, sessionKey)
+}
+
+func (c *Config) GetSessionCooldownByIndex(idx int, now time.Time) (time.Time, bool) {
+	if now.IsZero() {
+		now = time.Now()
+	}
+
+	c.RwMutx.Lock()
+	defer c.RwMutx.Unlock()
+
+	if len(c.Sessions) == 0 || idx < 0 || idx >= len(c.Sessions) {
+		return time.Time{}, false
+	}
+	c.ensureRuntimeStateLocked()
+
+	sessionKey := c.Sessions[idx].SessionKey
+	cooldownUntil, exists := c.SessionCooldownUntil[sessionKey]
+	if !exists {
+		return time.Time{}, false
+	}
+	if !cooldownUntil.After(now) {
+		delete(c.SessionCooldownUntil, sessionKey)
+		return time.Time{}, false
+	}
+	return cooldownUntil, true
 }
 
 func (c *Config) SetSessionOrgID(sessionKey, orgID string) {
@@ -250,7 +316,7 @@ func loadConfigFromEnv() *Config {
 func LoadConfig() *Config {
 	// 检查配置文件是否存在
 	exists, configPath := configFileExists()
-	
+
 	var config *Config
 	if exists {
 		logger.Info(fmt.Sprintf("Found config file at %s", configPath))
@@ -266,7 +332,7 @@ func LoadConfig() *Config {
 		// 如果配置文件不存在，从环境变量加载
 		logger.Info("Loading configuration from environment variables")
 		config = loadConfigFromEnv()
-		
+
 		// 自动创建默认配置文件，便于前端持久化
 		if err := createDefaultConfigFile(config); err != nil {
 			logger.Error(fmt.Sprintf("Failed to create default config file: %v", err))
@@ -290,9 +356,9 @@ func createDefaultConfigFile(config *Config) error {
 	if err != nil {
 		return fmt.Errorf("failed to get working directory: %w", err)
 	}
-	
+
 	configPath := filepath.Join(workDir, "config.yaml")
-	
+
 	// 构建配置数据
 	configData := map[string]interface{}{
 		"sessions":                   config.Sessions,
@@ -311,18 +377,18 @@ func createDefaultConfigFile(config *Config) error {
 		"modelDefinitions":           config.ModelDefinitions,
 		"requestLogRetention":        config.RequestLogRetention,
 	}
-	
+
 	// 序列化为 YAML
 	yamlData, err := yaml.Marshal(configData)
 	if err != nil {
 		return fmt.Errorf("failed to marshal config: %w", err)
 	}
-	
+
 	// 写入文件
 	if err := os.WriteFile(configPath, yamlData, 0644); err != nil {
 		return fmt.Errorf("failed to write config file: %w", err)
 	}
-	
+
 	return nil
 }
 
@@ -363,7 +429,7 @@ func mergeSessions(config *Config, envSessions []SessionInfo) *Config {
 	}
 
 	config.Sessions = mergedSessions
-	
+
 	// 更新重试次数
 	config.RetryCount = len(mergedSessions)
 	if config.RetryCount > 5 {

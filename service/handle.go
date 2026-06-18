@@ -45,7 +45,7 @@ func MoudlesHandler(c *gin.Context) {
 // ChatCompletionsHandler handles the chat completions endpoint
 func ChatCompletionsHandler(c *gin.Context) {
 	startTime := time.Now()
-	
+
 	useMirror, exist := c.Get("UseMirrorApi")
 	if exist && useMirror.(bool) {
 		MirrorChatHandler(c)
@@ -75,8 +75,18 @@ func ChatCompletionsHandler(c *gin.Context) {
 	if selectedModel.Thinking {
 		model += "-think"
 	}
+	sessionCount := len(config.ConfigInstance.Sessions)
+	if sessionCount == 0 {
+		lastError := "no Claude sessions configured"
+		logger.Error(lastError)
+		logRequest(c, model, -1, 0, 0, false, startTime, lastError)
+		c.JSON(http.StatusInternalServerError, ErrorResponse{
+			Error: lastError,
+		})
+		return
+	}
 	index := config.Sr.NextIndex()
-	
+
 	lastError := "request failed"
 	lastSessionIdx := -1
 	attemptedSessions := 0
@@ -84,27 +94,33 @@ func ChatCompletionsHandler(c *gin.Context) {
 	if maxAttempts <= 0 {
 		maxAttempts = 1
 	}
-	if sessionCount := len(config.ConfigInstance.Sessions); sessionCount > 0 && maxAttempts > sessionCount {
+	if maxAttempts > sessionCount {
 		maxAttempts = sessionCount
 	}
-	
+
 	// Attempt with retry mechanism
-	for i := 0; i < maxAttempts; i++ {
-		index = (index + 1) % len(config.ConfigInstance.Sessions)
+	for scannedSessions := 0; scannedSessions < sessionCount && attemptedSessions < maxAttempts; scannedSessions++ {
+		index = (index + 1) % sessionCount
+		if cooldownUntil, coolingDown := config.ConfigInstance.GetSessionCooldownByIndex(index, time.Now()); coolingDown {
+			lastError = fmt.Sprintf("session S%d is cooling down until %s after rate limit", index+1, formatChinaTime(cooldownUntil))
+			logger.Info(fmt.Sprintf("Skipping session %d due to rate limit cooldown until %s", index+1, formatChinaTime(cooldownUntil)))
+			continue
+		}
+
 		lastSessionIdx = index
 		attemptedSessions++
 		session, err := config.ConfigInstance.GetSessionForModel(index)
 		if err != nil {
 			logger.Error(fmt.Sprintf("Failed to get session for model %s: %v", model, err))
 			lastError = err.Error()
-			if i < maxAttempts-1 {
+			if attemptedSessions < maxAttempts {
 				logger.Info("Retrying another session")
 			}
 			continue
 		}
 
 		logger.Info(fmt.Sprintf("Using session for model %s (requested: %s): %s", model, selectedModel.RequestedModel, session.SessionKey))
-		if i > 0 {
+		if attemptedSessions > 1 {
 			processor.Prompt.Reset()
 			processor.Prompt.WriteString(processor.RootPrompt.String())
 		}
@@ -116,16 +132,28 @@ func ChatCompletionsHandler(c *gin.Context) {
 		}
 
 		lastError = core.GetErrorMessage(err)
+		if core.IsRateLimitError(err) {
+			cooldownUntil := config.ConfigInstance.CooldownSession(session.SessionKey, config.SessionRateLimitCooldown)
+			logger.Error(fmt.Sprintf(
+				"Session %d (%s) hit rate limit; cooling down until %s",
+				index+1,
+				maskSessionKey(session.SessionKey),
+				formatChinaTime(cooldownUntil),
+			))
+		}
 		if !core.IsRetryableError(err) {
 			logger.Error(fmt.Sprintf("Request failed with non-retryable error on session %d: %s", index+1, lastError))
 			break
 		}
-		if i < maxAttempts-1 {
+		if attemptedSessions < maxAttempts {
 			logger.Info(fmt.Sprintf("Retrying another session after retryable error: %s", lastError))
 		}
 	}
 
-	if attemptedSessions > 1 {
+	if attemptedSessions == 0 {
+		lastError = "all Claude sessions are cooling down after rate limits"
+		logger.Error(lastError)
+	} else if attemptedSessions > 1 {
 		logger.Error(fmt.Sprintf("Failed after %d attempts", attemptedSessions))
 	} else {
 		logger.Error("Request failed")

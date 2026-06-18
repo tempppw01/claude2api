@@ -619,54 +619,61 @@
         }
 
         .config-section {
-            display: flex;
-            flex-direction: column;
-            gap: 14px;
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px 14px;
         }
 
         .config-row {
             display: grid;
-            grid-template-columns: minmax(240px, 1fr) 220px;
-            gap: 16px;
+            grid-template-columns: minmax(150px, 1fr) minmax(156px, 220px);
+            gap: 10px;
             align-items: center;
-            padding-bottom: 14px;
-            border-bottom: 1px solid rgba(255,255,255,0.06);
+            min-height: 48px;
+            padding: 7px 10px;
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 12px;
+            background: rgba(255,255,255,0.035);
         }
 
         .config-row:last-child {
-            border-bottom: none;
-            padding-bottom: 0;
+            padding-bottom: 8px;
         }
 
         .config-label {
             display: flex;
             flex-direction: column;
-            gap: 4px;
+            gap: 2px;
+            min-width: 0;
         }
 
         .config-label-text {
             font-weight: 600;
+            font-size: 0.9rem;
+            line-height: 1.2;
         }
 
         .config-label-desc {
             color: var(--text-sub);
-            font-size: 0.84rem;
+            font-size: 0.76rem;
+            line-height: 1.2;
         }
 
         .toggle-switch {
             position: relative;
-            width: 52px;
-            height: 28px;
+            width: 46px;
+            height: 24px;
             background: rgba(255,255,255,0.1);
             border-radius: 999px;
             cursor: pointer;
             transition: all 0.25s ease;
+            justify-self: end;
         }
 
         .toggle-switch::after {
             content: '';
-            width: 22px;
-            height: 22px;
+            width: 18px;
+            height: 18px;
             position: absolute;
             top: 3px;
             left: 3px;
@@ -680,7 +687,104 @@
         }
 
         .toggle-switch.active::after {
-            transform: translateX(24px);
+            transform: translateX(22px);
+        }
+
+        #section-config .card {
+            padding: 14px 18px;
+        }
+
+        #section-config .card-header {
+            margin-bottom: 8px;
+        }
+
+        #section-config .card-icon {
+            width: 32px;
+            height: 32px;
+        }
+
+        #section-config .config-input {
+            min-height: 38px;
+            padding: 8px 10px;
+            border-radius: 9px;
+        }
+
+        #section-config .config-row-wide {
+            grid-column: 1 / -1;
+            grid-template-columns: minmax(210px, 0.42fr) minmax(0, 1fr);
+            align-items: stretch;
+        }
+
+        #section-config .config-row-wide .field {
+            gap: 8px;
+        }
+
+        #globalSystemPromptOverride {
+            height: 76px;
+            min-height: 76px;
+            resize: vertical;
+        }
+
+        #modelSystemPromptOverrideInput {
+            height: 48px;
+            min-height: 48px;
+            resize: vertical;
+        }
+
+        .config-model-panel {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) minmax(320px, 0.9fr);
+            gap: 12px;
+            min-width: 0;
+            max-height: 184px;
+            overflow: auto;
+        }
+
+        .config-model-panel .table-wrap {
+            max-height: 184px;
+            overflow: auto;
+        }
+
+        .config-model-form {
+            display: grid;
+            gap: 8px;
+            min-width: 0;
+        }
+
+        .config-model-form-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 8px;
+        }
+
+        #section-config .config-model-form .config-input {
+            min-height: 34px;
+            padding: 6px 9px;
+            font-size: 0.84rem;
+        }
+
+        .config-model-options,
+        .config-model-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .config-model-actions .btn {
+            padding: 7px 10px;
+            font-size: 0.84rem;
+        }
+
+        #section-config .test-option {
+            gap: 6px;
+            font-size: 0.86rem;
+        }
+
+        .config-save-btn {
+            margin-top: 10px;
+            width: 100%;
+            padding-block: 10px;
         }
 
         .table-wrap {
@@ -768,6 +872,15 @@
             text-align: center;
             color: var(--text-sub);
             padding: 40px 20px;
+        }
+
+        .session-pagination {
+            justify-content: flex-end;
+            margin: -4px 0 10px;
+        }
+
+        .session-page-summary {
+            min-width: 150px;
         }
 
         .status-pill {
@@ -1016,6 +1129,23 @@
             .test-row,
             .config-row {
                 grid-template-columns: 1fr;
+            }
+
+            .config-section {
+                grid-template-columns: 1fr;
+            }
+
+            #section-config .config-row-wide {
+                grid-template-columns: 1fr;
+            }
+
+            .config-model-panel,
+            .config-model-form-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .toggle-switch {
+                justify-self: start;
             }
 
             .container {
@@ -1352,12 +1482,12 @@
                                 <input type="password" class="config-input" id="adminPasswordConfigInput" placeholder="输入新的管理页密码">
                             </div>
 
-                            <div class="config-row" style="grid-template-columns:1fr; align-items:stretch;">
+                            <div class="config-row config-row-wide">
                                 <div class="config-label">
                                     <span class="config-label-text">全局系统提示词覆盖</span>
                                     <span class="config-label-desc">可为所有模型统一追加或替换系统提示词；模型级配置优先级更高</span>
                                 </div>
-                                <div class="field" style="display:grid; gap:10px;">
+                                <div class="field">
                                     <select id="globalPromptOverrideMode" class="config-input">
                                         <option value="append">追加模式</option>
                                         <option value="replace">替换模式</option>
@@ -1366,12 +1496,12 @@
                                 </div>
                             </div>
 
-                            <div class="config-row" style="grid-template-columns:1fr; align-items:stretch;">
+                            <div class="config-row config-row-wide">
                                 <div class="config-label">
                                     <span class="config-label-text">模型映射与模型管理</span>
                                     <span class="config-label-desc">支持维护对外模型名、真实上游模型 ID、Thinking 能力、可见性、免费或 Pro 分级与模型级提示词覆盖</span>
                                 </div>
-                                <div style="display:grid; gap:16px;">
+                                <div class="config-model-panel">
                                     <div class="table-wrap">
                                         <table>
                                             <thead>
@@ -1393,13 +1523,13 @@
                                         </table>
                                     </div>
 
-                                    <div class="field" style="display:grid; gap:12px;">
-                                        <div style="display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:12px;">
+                                    <div class="field config-model-form">
+                                        <div class="config-model-form-grid">
                                             <input type="text" id="modelPublicIdInput" class="config-input" placeholder="对外模型 ID，如 claude-sonnet-4-6">
                                             <input type="text" id="modelUpstreamIdInput" class="config-input" placeholder="上游模型 ID，如 claude-sonnet-4-6-20260217">
                                             <input type="text" id="modelDisplayNameInput" class="config-input" placeholder="显示名称，如 Claude Sonnet 4.6">
                                         </div>
-                                        <div style="display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:12px;">
+                                        <div class="config-model-form-grid">
                                             <select id="modelTierInput" class="config-input">
                                                 <option value="free">免费</option>
                                                 <option value="pro">Pro</option>
@@ -1412,12 +1542,12 @@
                                             <input type="text" id="modelNotesInput" class="config-input" placeholder="备注，例如 Legacy upstream-compatible model ID">
                                         </div>
                                         <textarea id="modelSystemPromptOverrideInput" class="config-input" rows="4" placeholder="模型级系统提示词覆盖；留空表示不设置"></textarea>
-                                        <div style="display:flex; gap:16px; flex-wrap:wrap;">
+                                        <div class="config-model-options">
                                             <label class="test-option"><input type="checkbox" id="modelSupportsThinkingInput"> 支持 Thinking</label>
                                             <label class="test-option"><input type="checkbox" id="modelEnabledInput" checked> 启用</label>
                                             <label class="test-option"><input type="checkbox" id="modelVisibleInput" checked> 在模型列表显示</label>
                                         </div>
-                                        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                                        <div class="config-model-actions">
                                             <button class="btn btn-secondary" type="button" onclick="resetModelDefinitionForm()">重置表单</button>
                                             <button class="btn btn-primary" type="button" onclick="upsertModelDefinition()">添加或更新模型</button>
                                         </div>
@@ -1426,7 +1556,7 @@
                             </div>
                         </div>
 
-                        <button class="btn btn-primary" style="margin-top:16px; width:100%;" onclick="saveAllConfig()">保存所有配置</button>
+                        <button class="btn btn-primary config-save-btn" onclick="saveAllConfig()">保存所有配置</button>
                     </div>
                 </section>
 
@@ -1442,6 +1572,12 @@
                                 <button class="btn btn-secondary" onclick="exportSessions('csv')">导出 CSV</button>
                                 <button class="btn btn-secondary" onclick="exportSessions('txt')">导出 TXT</button>
                             </div>
+                        </div>
+
+                        <div class="pagination session-pagination" id="sessionPagination" style="display:none;">
+                            <button class="page-size-btn" type="button" onclick="setSessionPage(sessionCurrentPage - 1)">上一页</button>
+                            <span class="page-info session-page-summary" id="sessionPageInfo">第 1 / 1 页</span>
+                            <button class="page-size-btn" type="button" onclick="setSessionPage(sessionCurrentPage + 1)">下一页</button>
                         </div>
 
                         <div class="table-wrap">
@@ -1592,6 +1728,8 @@
     <script>
         let currentConfig = {};
         let sessions = [];
+        let sessionCurrentPage = 1;
+        const sessionPageSize = 10;
         let modelDefinitions = [];
         let editingModelIndex = -1;
         let logsCurrentPage = 1;
@@ -2276,15 +2414,29 @@
             const tbody = document.getElementById('sessionTableBody');
             if (!sessions.length) {
                 tbody.innerHTML = '<tr><td colspan="8" class="empty-state">暂无 Session</td></tr>';
+                updateSessionPagination(0);
                 return;
             }
 
-            tbody.innerHTML = sessions.map((session, index) => {
+            const orderedSessions = getOrderedSessions();
+            const totalPages = Math.max(1, Math.ceil(orderedSessions.length / sessionPageSize));
+            if (sessionCurrentPage > totalPages) {
+                sessionCurrentPage = totalPages;
+            }
+            if (sessionCurrentPage < 1) {
+                sessionCurrentPage = 1;
+            }
+
+            const start = (sessionCurrentPage - 1) * sessionPageSize;
+            const pageSessions = orderedSessions.slice(start, start + sessionPageSize);
+
+            tbody.innerHTML = pageSessions.map((session, pageIndex) => {
                 const rate = formatSessionSuccessRate(session);
                 const lastError = formatSessionLastError(session);
+                const sessionIndex = Number.isInteger(session.index) ? session.index : sessions.indexOf(session);
                 return `
                     <tr>
-                        <td>${index + 1}</td>
+                        <td>${start + pageIndex + 1}</td>
                         <td><code>${escapeHtml(session.session_key)}</code></td>
                         <td>${escapeHtml(session.org_id || '-')}</td>
                         <td title="${escapeHtml(session.cookie_preview || '-')}">${escapeHtml(session.cookie_preview || '-')}</td>
@@ -2292,12 +2444,65 @@
                         <td><span class="session-rate-pill ${rate.className}" title="${escapeHtml(rate.title)}">${escapeHtml(rate.text)}</span></td>
                         <td class="session-error-cell">${lastError}</td>
                         <td>
-                            <button class="btn btn-success" onclick="testSession(${index})" style="margin-right:8px; padding:8px 12px;">测试</button>
-                            <button class="btn btn-danger" onclick="removeSession(${index})" style="padding:8px 12px;">删除</button>
+                            <button class="btn btn-success" onclick="testSession(${sessionIndex}, this)" style="margin-right:8px; padding:8px 12px;">测试</button>
+                            <button class="btn btn-danger" onclick="removeSession(${sessionIndex})" style="padding:8px 12px;">删除</button>
                         </td>
                     </tr>
                 `;
             }).join('');
+
+            updateSessionPagination(orderedSessions.length);
+        }
+
+        function getOrderedSessions() {
+            return [...sessions].sort((a, b) => {
+                const successDiff = parseSessionTime(b.last_success_at) - parseSessionTime(a.last_success_at);
+                if (successDiff !== 0) {
+                    return successDiff;
+                }
+                const aIndex = Number.isInteger(a.index) ? a.index : sessions.indexOf(a);
+                const bIndex = Number.isInteger(b.index) ? b.index : sessions.indexOf(b);
+                return aIndex - bIndex;
+            });
+        }
+
+        function parseSessionTime(value) {
+            const text = String(value || '').trim();
+            if (!text || text === '-') {
+                return 0;
+            }
+            const normalized = text.replace(' ', 'T');
+            const timestamp = Date.parse(normalized);
+            return Number.isNaN(timestamp) ? 0 : timestamp;
+        }
+
+        function updateSessionPagination(total) {
+            const pagination = document.getElementById('sessionPagination');
+            const info = document.getElementById('sessionPageInfo');
+            if (!pagination || !info) {
+                return;
+            }
+
+            if (total <= sessionPageSize) {
+                pagination.style.display = 'none';
+                return;
+            }
+
+            const totalPages = Math.ceil(total / sessionPageSize);
+            const start = (sessionCurrentPage - 1) * sessionPageSize + 1;
+            const end = Math.min(total, sessionCurrentPage * sessionPageSize);
+            info.textContent = `第 ${sessionCurrentPage} / ${totalPages} 页 · ${start}-${end} / ${total}`;
+            pagination.style.display = 'flex';
+
+            const buttons = pagination.querySelectorAll('button');
+            if (buttons[0]) buttons[0].disabled = sessionCurrentPage <= 1;
+            if (buttons[1]) buttons[1].disabled = sessionCurrentPage >= totalPages;
+        }
+
+        function setSessionPage(page) {
+            const totalPages = Math.max(1, Math.ceil(sessions.length / sessionPageSize));
+            sessionCurrentPage = Math.min(Math.max(1, page), totalPages);
+            updateSessionTable();
         }
 
         function formatSessionSuccessRate(session) {
@@ -2329,19 +2534,24 @@
             const type = String(session.last_error_type || '').trim();
             const time = String(session.last_error_at || '').trim();
             const model = String(session.last_error_model || '').trim();
+            const coolingDown = session.cooling_down === true;
+            const cooldownUntil = String(session.cooldown_until || '').trim();
 
-            if (!message && !type) {
+            if (!message && !type && !coolingDown) {
                 return '<span class="session-error-empty">-</span>';
             }
 
-            const label = type || '报错';
+            const label = coolingDown ? '冷却中' : (type || '报错');
             const titleParts = [];
+            if (cooldownUntil) titleParts.push(`冷却到: ${cooldownUntil}`);
             if (time) titleParts.push(`时间: ${time}`);
             if (model) titleParts.push(`模型: ${model}`);
             if (type) titleParts.push(`类型: ${type}`);
             if (message) titleParts.push(`错误: ${message}`);
             const title = escapeHtml(titleParts.join('\n'));
-            const timeLine = time ? `<div class="session-error-time">${escapeHtml(time)}</div>` : '';
+            const timeLine = cooldownUntil
+                ? `<div class="session-error-time">${escapeHtml(cooldownUntil)}</div>`
+                : (time ? `<div class="session-error-time">${escapeHtml(time)}</div>` : '');
 
             return `
                 <div title="${title}">
@@ -2412,10 +2622,11 @@
             }
         }
 
-        async function testSession(index) {
-            const tbody = document.getElementById('sessionTableBody');
-            const row = tbody.rows[index];
-            const testBtn = row.querySelector('.btn-success');
+        async function testSession(index, triggerButton) {
+            const testBtn = triggerButton || document.querySelector(`#sessionTableBody .btn-success[onclick*="testSession(${index}"]`);
+            if (!testBtn) {
+                return;
+            }
             const originalText = testBtn.textContent;
             testBtn.textContent = '测试中...';
             testBtn.disabled = true;
@@ -2430,12 +2641,13 @@
 
                 if (result.status === 'ok') {
                     testBtn.textContent = '正常';
-                    if (sessions[index]) {
+                    const session = sessions.find(item => item.index === index) || sessions[index];
+                    if (session) {
                         if (result.org_id) {
-                            sessions[index].org_id = result.org_id;
+                            session.org_id = result.org_id;
                         }
                         if (typeof result.cookie_preview === 'string') {
-                            sessions[index].cookie_preview = result.cookie_preview;
+                            session.cookie_preview = result.cookie_preview;
                         }
                         updateSessionTable();
                     }

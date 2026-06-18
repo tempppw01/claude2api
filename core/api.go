@@ -72,6 +72,9 @@ func IsRetryableError(err error) bool {
 	if err == nil {
 		return false
 	}
+	if IsRateLimitError(err) {
+		return true
+	}
 
 	var apiErr *APIError
 	if errors.As(err, &apiErr) {
@@ -84,6 +87,18 @@ func IsRetryableError(err error) bool {
 		strings.Contains(lowerErr, "tempor") ||
 		strings.Contains(lowerErr, "connection reset") ||
 		strings.Contains(lowerErr, "unexpected eof")
+}
+
+func IsRateLimitError(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	lowerErr := strings.ToLower(err.Error())
+	return strings.Contains(lowerErr, "rate limit") ||
+		strings.Contains(lowerErr, "too many requests") ||
+		strings.Contains(lowerErr, "retry-after") ||
+		strings.Contains(lowerErr, "429")
 }
 
 func GetErrorMessage(err error) string {

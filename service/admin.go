@@ -26,8 +26,15 @@ func AdminStatusHandler(c *gin.Context) {
 
 	// Build session list (mask sensitive data)
 	sessions := make([]map[string]interface{}, 0)
+	now := time.Now()
 	for i, session := range config.ConfigInstance.Sessions {
 		maskedKey := maskSessionKey(session.SessionKey)
+		cooldownUntil := ""
+		coolingDown := false
+		if until, ok := config.ConfigInstance.GetSessionCooldownByIndex(i, now); ok {
+			coolingDown = true
+			cooldownUntil = formatChinaTime(until)
+		}
 		lastSuccessAt := ""
 		if lastSuccess, ok := lastSuccessBySession[i]; ok {
 			lastSuccessAt = formatChinaTime(lastSuccess)
@@ -44,18 +51,20 @@ func AdminStatusHandler(c *gin.Context) {
 		}
 		sessionStats := statsBySession[i]
 		sessions = append(sessions, map[string]interface{}{
-			"index":           i,
-			"session_key":     maskedKey,
-			"org_id":          session.OrgID,
-			"cf_clearance":    session.CFClearance != "",
-			"cookie_string":   session.CookieString != "",
-			"cookie_preview":  maskCookiePreview(session),
-			"last_success_at": lastSuccessAt,
+			"index":            i,
+			"session_key":      maskedKey,
+			"org_id":           session.OrgID,
+			"cf_clearance":     session.CFClearance != "",
+			"cookie_string":    session.CookieString != "",
+			"cookie_preview":   maskCookiePreview(session),
+			"cooling_down":     coolingDown,
+			"cooldown_until":   cooldownUntil,
+			"last_success_at":  lastSuccessAt,
 			"last_error_at":    lastErrorAt,
 			"last_error_type":  lastErrorType,
 			"last_error":       lastErrorMessage,
 			"last_error_model": lastErrorModel,
-			"total_requests":  sessionStats.TotalRequests,
+			"total_requests":   sessionStats.TotalRequests,
 			"success_requests": sessionStats.SuccessRequests,
 			"failed_requests":  sessionStats.FailedRequests,
 			"success_rate":     sessionStats.SuccessRate,
@@ -201,6 +210,7 @@ func AdminRemoveSessionHandler(c *gin.Context) {
 		config.ConfigInstance.Sessions[:index],
 		config.ConfigInstance.Sessions[index+1:]...,
 	)
+	config.ConfigInstance.ClearSessionCooldown(removed.SessionKey)
 	config.ConfigInstance.RetryCount = len(config.ConfigInstance.Sessions)
 	if config.ConfigInstance.RetryCount > 5 {
 		config.ConfigInstance.RetryCount = 5
@@ -279,19 +289,19 @@ func AdminTestSessionHandler(c *gin.Context) {
 
 // UpdateConfigRequest represents the request body for updating config
 type UpdateConfigRequest struct {
-	MaxChatHistoryLength    *int                      `json:"max_chat_history_length"`
-	ChatDelete              *bool                     `json:"chat_delete"`
-	NoRolePrefix            *bool                     `json:"no_role_prefix"`
-	PromptDisableArtifacts  *bool                     `json:"prompt_disable_artifacts"`
-	EnableMirrorApi         *bool                     `json:"enable_mirror_api"`
-	MirrorApiPrefix         *string                   `json:"mirror_api_prefix"`
-	APIKey                  *string                   `json:"api_key"`
-	Proxy                   *string                   `json:"proxy"`
-	AdminPassword           *string                   `json:"admin_password"`
-	GlobalSystemPrompt      *string                   `json:"global_system_prompt_override"`
-	GlobalPromptMode        *string                   `json:"global_prompt_override_mode"`
-	ModelDefinitions        *[]config.ModelDefinition `json:"model_definitions"`
-	RequestLogRetention     *int                      `json:"request_log_retention"`
+	MaxChatHistoryLength   *int                      `json:"max_chat_history_length"`
+	ChatDelete             *bool                     `json:"chat_delete"`
+	NoRolePrefix           *bool                     `json:"no_role_prefix"`
+	PromptDisableArtifacts *bool                     `json:"prompt_disable_artifacts"`
+	EnableMirrorApi        *bool                     `json:"enable_mirror_api"`
+	MirrorApiPrefix        *string                   `json:"mirror_api_prefix"`
+	APIKey                 *string                   `json:"api_key"`
+	Proxy                  *string                   `json:"proxy"`
+	AdminPassword          *string                   `json:"admin_password"`
+	GlobalSystemPrompt     *string                   `json:"global_system_prompt_override"`
+	GlobalPromptMode       *string                   `json:"global_prompt_override_mode"`
+	ModelDefinitions       *[]config.ModelDefinition `json:"model_definitions"`
+	RequestLogRetention    *int                      `json:"request_log_retention"`
 }
 
 // AdminUpdateConfigHandler handles updating configuration
@@ -385,7 +395,7 @@ func AdminUpdateConfigHandler(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
 			"status":  "updated",
 			"message": "Config updated in memory (could not save to file: " + err.Error() + ")",
-			"config": buildAdminConfigResponse(),
+			"config":  buildAdminConfigResponse(),
 		})
 		return
 	}
@@ -395,7 +405,7 @@ func AdminUpdateConfigHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"status":  "updated",
 		"message": "Config saved successfully",
-		"config": buildAdminConfigResponse(),
+		"config":  buildAdminConfigResponse(),
 	})
 }
 
