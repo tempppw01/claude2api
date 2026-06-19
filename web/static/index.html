@@ -883,6 +883,418 @@
             min-width: 150px;
         }
 
+        .session-shell {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .session-hero {
+            position: relative;
+            overflow: hidden;
+            display: grid;
+            grid-template-columns: minmax(220px, 1fr) repeat(3, minmax(130px, 180px));
+            gap: 14px;
+            padding: 18px;
+            border-radius: 18px;
+            border: 1px solid rgba(255,255,255,0.08);
+            background:
+                radial-gradient(circle at top left, rgba(67,233,123,0.18), transparent 32%),
+                linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.045));
+        }
+
+        .session-hero::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(110deg, transparent 0%, rgba(255,255,255,0.08) 45%, transparent 70%);
+            transform: translateX(-100%);
+            animation: sheen 8s ease-in-out infinite;
+            pointer-events: none;
+        }
+
+        @keyframes sheen {
+            0%, 72% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+        .session-hero-main {
+            position: relative;
+            z-index: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .session-hero-title {
+            font-size: 1.08rem;
+            font-weight: 700;
+        }
+
+        .session-hero-desc {
+            max-width: 560px;
+            color: var(--text-sub);
+            font-size: 0.88rem;
+            line-height: 1.55;
+        }
+
+        .session-hero-stat {
+            position: relative;
+            z-index: 1;
+            padding: 14px;
+            border-radius: 14px;
+            background: rgba(8,12,24,0.38);
+            border: 1px solid rgba(255,255,255,0.08);
+        }
+
+        .session-hero-stat span {
+            display: block;
+            color: var(--text-sub);
+            font-size: 0.76rem;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+        }
+
+        .session-hero-stat strong {
+            display: block;
+            margin-top: 6px;
+            font-size: 1.6rem;
+            line-height: 1;
+        }
+
+        .session-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 14px;
+        }
+
+        .session-card {
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            min-height: 250px;
+            padding: 16px;
+            border-radius: 18px;
+            border: 1px solid rgba(255,255,255,0.08);
+            background: linear-gradient(145deg, rgba(255,255,255,0.08), rgba(255,255,255,0.035));
+            box-shadow: 0 16px 36px rgba(0,0,0,0.16);
+            animation: cardIn 0.42s ease both;
+            transition: transform 0.22s ease, border-color 0.22s ease, background 0.22s ease;
+        }
+
+        .session-card:hover {
+            transform: translateY(-3px);
+            border-color: rgba(142,162,255,0.34);
+            background: linear-gradient(145deg, rgba(255,255,255,0.11), rgba(255,255,255,0.05));
+        }
+
+        @keyframes cardIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .session-card.cooling {
+            border-color: rgba(251,191,36,0.32);
+        }
+
+        .session-card.error {
+            border-color: rgba(248,113,113,0.28);
+        }
+
+        .session-card-top {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            align-items: flex-start;
+        }
+
+        .session-identity {
+            display: flex;
+            gap: 12px;
+            min-width: 0;
+        }
+
+        .session-avatar {
+            width: 42px;
+            height: 42px;
+            flex: 0 0 auto;
+            display: grid;
+            place-items: center;
+            border-radius: 14px;
+            color: #10203a;
+            font-weight: 800;
+            background: linear-gradient(135deg, #43e97b, #38f9d7);
+        }
+
+        .session-card.cooling .session-avatar {
+            background: linear-gradient(135deg, #fbbf24, #f59e0b);
+        }
+
+        .session-card.error .session-avatar {
+            background: linear-gradient(135deg, #fb7185, #f97316);
+            color: white;
+        }
+
+        .session-key {
+            display: block;
+            max-width: 230px;
+            color: var(--text-main);
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.92rem;
+            font-weight: 700;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .session-subtitle {
+            margin-top: 4px;
+            color: var(--text-sub);
+            font-size: 0.78rem;
+        }
+
+        .session-status-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 10px;
+            border-radius: 999px;
+            background: rgba(67,233,123,0.15);
+            color: var(--success);
+            font-size: 0.78rem;
+            font-weight: 800;
+            white-space: nowrap;
+        }
+
+        .session-status-chip.cooling {
+            background: rgba(251,191,36,0.15);
+            color: var(--warning);
+        }
+
+        .session-status-chip.error {
+            background: rgba(248,113,113,0.15);
+            color: var(--danger);
+        }
+
+        .session-card-metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(135px, 1fr));
+            gap: 10px;
+        }
+
+        .session-freeze-panel {
+            display: grid;
+            grid-template-columns: 42px minmax(0, 1fr);
+            gap: 12px;
+            align-items: center;
+            padding: 12px;
+            border-radius: 16px;
+            border: 1px solid rgba(67,233,123,0.18);
+            background: rgba(67,233,123,0.08);
+        }
+
+        .session-freeze-panel.cooling {
+            border-color: rgba(251,191,36,0.28);
+            background:
+                linear-gradient(135deg, rgba(251,191,36,0.16), rgba(245,158,11,0.08)),
+                rgba(0,0,0,0.12);
+        }
+
+        .session-freeze-panel.error {
+            border-color: rgba(248,113,113,0.26);
+            background: rgba(248,113,113,0.09);
+        }
+
+        .session-freeze-icon {
+            width: 42px;
+            height: 42px;
+            display: grid;
+            place-items: center;
+            border-radius: 14px;
+            background: rgba(67,233,123,0.18);
+            color: var(--success);
+            font-size: 1.2rem;
+            box-shadow: 0 0 0 6px rgba(67,233,123,0.05);
+        }
+
+        .session-freeze-panel.cooling .session-freeze-icon {
+            background: rgba(251,191,36,0.18);
+            color: var(--warning);
+            box-shadow: 0 0 0 6px rgba(251,191,36,0.07);
+            animation: freezePulse 1.8s ease-in-out infinite;
+        }
+
+        .session-freeze-panel.error .session-freeze-icon {
+            background: rgba(248,113,113,0.16);
+            color: var(--danger);
+            box-shadow: 0 0 0 6px rgba(248,113,113,0.06);
+        }
+
+        @keyframes freezePulse {
+            0%, 100% { transform: scale(1); box-shadow: 0 0 0 6px rgba(251,191,36,0.07); }
+            50% { transform: scale(1.04); box-shadow: 0 0 0 10px rgba(251,191,36,0.03); }
+        }
+
+        .session-freeze-title {
+            color: var(--text-main);
+            font-size: 0.94rem;
+            font-weight: 800;
+        }
+
+        .session-freeze-text {
+            margin-top: 4px;
+            color: var(--text-sub);
+            font-size: 0.8rem;
+            line-height: 1.4;
+        }
+
+        .session-freeze-time {
+            color: var(--warning);
+            font-weight: 800;
+        }
+
+        .session-freeze-panel:not(.cooling) .session-freeze-time {
+            color: var(--success);
+        }
+
+        .session-freeze-panel.error .session-freeze-time {
+            color: var(--danger);
+        }
+
+        .session-freeze-progress {
+            position: relative;
+            height: 6px;
+            margin-top: 10px;
+            overflow: hidden;
+            border-radius: 999px;
+            background: rgba(255,255,255,0.08);
+        }
+
+        .session-freeze-progress span {
+            display: block;
+            height: 100%;
+            width: var(--progress, 100%);
+            border-radius: inherit;
+            background: linear-gradient(90deg, #43e97b, #38f9d7);
+            transition: width 0.45s ease;
+        }
+
+        .session-freeze-panel.cooling .session-freeze-progress span {
+            background: linear-gradient(90deg, #f59e0b, #fbbf24);
+        }
+
+        .session-freeze-panel.error .session-freeze-progress span {
+            background: linear-gradient(90deg, #f87171, #ef4444);
+        }
+
+        .session-mini-metric {
+            padding: 12px;
+            border-radius: 14px;
+            background: rgba(0,0,0,0.16);
+            border: 1px solid rgba(255,255,255,0.06);
+        }
+
+        .session-mini-metric span {
+            display: block;
+            color: var(--text-sub);
+            font-size: 0.74rem;
+            font-weight: 700;
+        }
+
+        .session-mini-metric strong {
+            display: block;
+            margin-top: 6px;
+            font-size: 0.96rem;
+            line-height: 1.25;
+            word-break: break-word;
+        }
+
+        .session-mini-metric.highlight {
+            background: rgba(102,126,234,0.12);
+            border-color: rgba(142,162,255,0.18);
+        }
+
+        .session-mini-metric.warning {
+            background: rgba(251,191,36,0.10);
+            border-color: rgba(251,191,36,0.18);
+        }
+
+        .session-mini-metric strong.metric-good {
+            color: var(--success);
+        }
+
+        .session-mini-metric strong.metric-warn {
+            color: var(--warning);
+        }
+
+        .session-mini-metric strong.metric-danger {
+            color: var(--danger);
+        }
+
+        .session-card-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: auto;
+        }
+
+        .session-card-actions .btn {
+            min-width: 84px;
+            padding: 9px 12px;
+        }
+
+        .session-details {
+            border-top: 1px solid rgba(255,255,255,0.08);
+            padding-top: 10px;
+        }
+
+        .session-details summary {
+            cursor: pointer;
+            color: var(--text-sub);
+            font-weight: 700;
+            font-size: 0.82rem;
+            list-style: none;
+        }
+
+        .session-details summary::-webkit-details-marker {
+            display: none;
+        }
+
+        .session-details summary::after {
+            content: '展开';
+            margin-left: 8px;
+            color: #9cf0ff;
+            font-size: 0.76rem;
+        }
+
+        .session-details[open] summary::after {
+            content: '收起';
+        }
+
+        .session-detail-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .session-detail-row {
+            display: grid;
+            grid-template-columns: 92px minmax(0, 1fr);
+            gap: 10px;
+            color: var(--text-sub);
+            font-size: 0.8rem;
+        }
+
+        .session-detail-row strong {
+            color: var(--text-main);
+            font-weight: 600;
+            word-break: break-word;
+        }
+
         .status-pill {
             display: inline-flex;
             align-items: center;
@@ -1184,6 +1596,22 @@
             .model-name {
                 white-space: normal;
                 overflow-wrap: anywhere;
+            }
+
+            .session-hero {
+                grid-template-columns: 1fr;
+            }
+
+            .session-list {
+                grid-template-columns: 1fr;
+            }
+
+            .session-card-top {
+                flex-direction: column;
+            }
+
+            .session-status-chip {
+                align-self: flex-start;
             }
         }
     </style>
@@ -1580,24 +2008,28 @@
                             <button class="page-size-btn" type="button" onclick="setSessionPage(sessionCurrentPage + 1)">下一页</button>
                         </div>
 
-                        <div class="table-wrap">
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th style="width:70px;">#</th>
-                                        <th>Session Key</th>
-                                        <th>Org ID</th>
-                                        <th>附加 Cookie</th>
-                                        <th>最后成功时间</th>
-                                        <th>成功率</th>
-                                        <th>最后报错</th>
-                                        <th style="width:180px;">操作</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="sessionTableBody">
-                                    <tr><td colspan="8" class="empty-state">加载中...</td></tr>
-                                </tbody>
-                            </table>
+                        <div class="session-shell">
+                            <div class="session-hero">
+                                <div class="session-hero-main">
+                                    <div class="session-hero-title">会话池状态</div>
+                                    <div class="session-hero-desc">实时状态、冷却窗口与最近可用性。</div>
+                                </div>
+                                <div class="session-hero-stat">
+                                    <span>总数</span>
+                                    <strong id="sessionHeroTotal">-</strong>
+                                </div>
+                                <div class="session-hero-stat">
+                                    <span>可用</span>
+                                    <strong id="sessionHeroReady">-</strong>
+                                </div>
+                                <div class="session-hero-stat">
+                                    <span>冷却中</span>
+                                    <strong id="sessionHeroCooling">-</strong>
+                                </div>
+                            </div>
+                            <div class="session-list" id="sessionTableBody">
+                                <div class="empty-state">加载中...</div>
+                            </div>
                         </div>
 
                         <div class="form-grid" style="margin-top:16px;">
@@ -1739,6 +2171,7 @@
         let testController = null;
         let adminAuthenticated = false;
         let autoRefreshTimer = null;
+        let sessionClockTimer = null;
         let modelPanelExpanded = false;
 
         const sectionMeta = {
@@ -1892,16 +2325,41 @@
         }
 
         function startAutoRefresh() {
-            if (autoRefreshTimer) return;
+            if (autoRefreshTimer) {
+                startSessionClock();
+                return;
+            }
             autoRefreshTimer = setInterval(() => {
                 loadAllData();
             }, 30000);
+            startSessionClock();
         }
 
         function stopAutoRefresh() {
-            if (!autoRefreshTimer) return;
-            clearInterval(autoRefreshTimer);
-            autoRefreshTimer = null;
+            if (autoRefreshTimer) {
+                clearInterval(autoRefreshTimer);
+                autoRefreshTimer = null;
+            }
+            stopSessionClock();
+        }
+
+        function startSessionClock() {
+            if (sessionClockTimer) return;
+            sessionClockTimer = setInterval(() => {
+                const section = document.getElementById('section-sessions');
+                if (!adminAuthenticated || !section || !section.classList.contains('active')) {
+                    return;
+                }
+                if (sessions.some(session => session.cooling_down === true)) {
+                    updateSessionTable();
+                }
+            }, 60000);
+        }
+
+        function stopSessionClock() {
+            if (!sessionClockTimer) return;
+            clearInterval(sessionClockTimer);
+            sessionClockTimer = null;
         }
 
         async function loadData() {
@@ -2411,9 +2869,10 @@
         }
 
         function updateSessionTable() {
-            const tbody = document.getElementById('sessionTableBody');
+            const container = document.getElementById('sessionTableBody');
+            updateSessionOverview();
             if (!sessions.length) {
-                tbody.innerHTML = '<tr><td colspan="8" class="empty-state">暂无 Session</td></tr>';
+                container.innerHTML = '<div class="empty-state">暂无 Session</div>';
                 updateSessionPagination(0);
                 return;
             }
@@ -2430,28 +2889,251 @@
             const start = (sessionCurrentPage - 1) * sessionPageSize;
             const pageSessions = orderedSessions.slice(start, start + sessionPageSize);
 
-            tbody.innerHTML = pageSessions.map((session, pageIndex) => {
-                const rate = formatSessionSuccessRate(session);
-                const lastError = formatSessionLastError(session);
+            container.innerHTML = pageSessions.map((session, pageIndex) => {
+                const visual = getSessionVisualState(session);
+                const capacity = getSessionCapacityMetrics(session);
+                const details = formatSessionDetailRows(session);
                 const sessionIndex = Number.isInteger(session.index) ? session.index : sessions.indexOf(session);
+                const displayIndex = start + pageIndex + 1;
                 return `
-                    <tr>
-                        <td>${start + pageIndex + 1}</td>
-                        <td><code>${escapeHtml(session.session_key)}</code></td>
-                        <td>${escapeHtml(session.org_id || '-')}</td>
-                        <td title="${escapeHtml(session.cookie_preview || '-')}">${escapeHtml(session.cookie_preview || '-')}</td>
-                        <td class="mono">${escapeHtml(session.last_success_at || '-')}</td>
-                        <td><span class="session-rate-pill ${rate.className}" title="${escapeHtml(rate.title)}">${escapeHtml(rate.text)}</span></td>
-                        <td class="session-error-cell">${lastError}</td>
-                        <td>
-                            <button class="btn btn-success" onclick="testSession(${sessionIndex}, this)" style="margin-right:8px; padding:8px 12px;">测试</button>
-                            <button class="btn btn-danger" onclick="removeSession(${sessionIndex})" style="padding:8px 12px;">删除</button>
-                        </td>
-                    </tr>
+                    <article class="session-card ${visual.className}" style="animation-delay:${Math.min(pageIndex * 45, 280)}ms">
+                        <div class="session-card-top">
+                            <div class="session-identity">
+                                <div class="session-avatar">${displayIndex}</div>
+                                <div>
+                                    <code class="session-key" title="${escapeHtml(session.session_key || '-')}">${escapeHtml(session.session_key || '-')}</code>
+                                    <div class="session-subtitle">${escapeHtml(visual.subtitle)}</div>
+                                </div>
+                            </div>
+                            <span class="session-status-chip ${visual.className}">${escapeHtml(visual.label)}</span>
+                        </div>
+
+                        ${formatSessionFreezePanel(visual)}
+
+                        <div class="session-card-metrics">
+                            <div class="session-mini-metric highlight">
+                                <span>历史成功</span>
+                                <strong class="metric-good">${escapeHtml(capacity.successText)}</strong>
+                            </div>
+                            <div class="session-mini-metric highlight">
+                                <span>Token 总量</span>
+                                <strong>${escapeHtml(capacity.totalTokensText)}</strong>
+                            </div>
+                            <div class="session-mini-metric">
+                                <span>平均 Token</span>
+                                <strong>${escapeHtml(capacity.avgTokensText)}</strong>
+                            </div>
+                            <div class="session-mini-metric warning">
+                                <span>限流次数</span>
+                                <strong class="${capacity.rateLimitClass}">${escapeHtml(capacity.rateLimitText)}</strong>
+                            </div>
+                            <div class="session-mini-metric warning">
+                                <span>平均几次后限流</span>
+                                <strong class="${capacity.limitCycleClass}">${escapeHtml(capacity.limitCycleText)}</strong>
+                            </div>
+                            <div class="session-mini-metric">
+                                <span>${escapeHtml(visual.timeLabel)}</span>
+                                <strong class="mono">${escapeHtml(visual.timeValue)}</strong>
+                            </div>
+                        </div>
+
+                        <details class="session-details">
+                            <summary>技术详情</summary>
+                            <div class="session-detail-grid">${details}</div>
+                        </details>
+
+                        <div class="session-card-actions">
+                            <button class="btn btn-success" onclick="testSession(${sessionIndex}, this)">测试</button>
+                            <button class="btn btn-danger" onclick="removeSession(${sessionIndex})">删除</button>
+                        </div>
+                    </article>
                 `;
             }).join('');
 
             updateSessionPagination(orderedSessions.length);
+        }
+
+        function updateSessionOverview() {
+            const totalEl = document.getElementById('sessionHeroTotal');
+            const readyEl = document.getElementById('sessionHeroReady');
+            const coolingEl = document.getElementById('sessionHeroCooling');
+            if (!totalEl || !readyEl || !coolingEl) {
+                return;
+            }
+
+            const total = sessions.length;
+            const cooling = sessions.filter(session => session.cooling_down === true).length;
+            const blocked = sessions.filter(session => !session.cooling_down && hasActiveSessionError(session)).length;
+            const ready = Math.max(0, total - cooling - blocked);
+            totalEl.textContent = total;
+            readyEl.textContent = ready;
+            coolingEl.textContent = cooling;
+        }
+
+        function getSessionVisualState(session) {
+            const coolingDown = session.cooling_down === true;
+            const cooldownUntil = String(session.cooldown_until || '').trim();
+            const type = String(session.last_error_type || '').trim();
+            const lastSuccess = String(session.last_success_at || '').trim();
+            if (coolingDown) {
+                const cooldownAt = parseSessionTime(cooldownUntil);
+                const remainingMs = cooldownAt ? Math.max(0, cooldownAt - Date.now()) : 0;
+                const progress = cooldownAt ? getCooldownProgress(remainingMs) : 8;
+                const remainingText = cooldownAt
+                    ? (remainingMs > 0 ? formatDurationCompact(remainingMs) : '已到解冻时间，等待刷新')
+                    : '等待 Claude 返回解冻时间';
+                return {
+                    className: 'cooling',
+                    label: '冻结中',
+                    subtitle: cooldownUntil ? `冻结到 ${cooldownUntil}` : '等待限流恢复',
+                    freezeIcon: '⏳',
+                    freezeTitle: '当前已冻结',
+                    freezeText: cooldownUntil ? `将在 <span class="session-freeze-time">${escapeHtml(cooldownUntil)}</span> 自动解冻` : '正在等待接口返回解冻窗口',
+                    freezeHint: remainingText,
+                    progress,
+                    timeLabel: '解冻时间',
+                    timeValue: cooldownUntil || '-'
+                };
+            }
+            if (type && hasActiveSessionError(session)) {
+                return {
+                    className: 'error',
+                    label: '需处理',
+                    subtitle: '最近一次请求需要关注',
+                    freezeIcon: '!',
+                    freezeTitle: type || '异常',
+                    freezeText: '不是冷却状态，需要检查最后报错或重新测试',
+                    freezeHint: session.last_error_at || '-',
+                    progress: 100,
+                    timeLabel: '报错时间',
+                    timeValue: session.last_error_at || '-'
+                };
+            }
+            return {
+                className: '',
+                label: '已解冻',
+                subtitle: '可参与请求轮询',
+                freezeIcon: '✓',
+                freezeTitle: '当前可用',
+                freezeText: '没有冻结窗口，下一次请求可进入轮询',
+                freezeHint: lastSuccess ? `最后成功 ${lastSuccess}` : '暂无成功记录',
+                progress: 100,
+                timeLabel: '最后成功',
+                timeValue: lastSuccess || '-'
+            };
+        }
+
+        function formatSessionFreezePanel(visual) {
+            return `
+                <div class="session-freeze-panel ${visual.className}">
+                    <div class="session-freeze-icon">${escapeHtml(visual.freezeIcon || '✓')}</div>
+                    <div>
+                        <div class="session-freeze-title">${escapeHtml(visual.freezeTitle || visual.label)}</div>
+                        <div class="session-freeze-text">${visual.freezeText || ''}</div>
+                        <div class="session-freeze-text">${escapeHtml(visual.freezeHint || '')}</div>
+                        <div class="session-freeze-progress" style="--progress:${Number(visual.progress || 0).toFixed(0)}%">
+                            <span></span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function getCooldownProgress(remainingMs) {
+            const maxWindow = 5 * 60 * 60 * 1000;
+            if (remainingMs <= 0) {
+                return 100;
+            }
+            return Math.max(8, Math.min(96, 100 - (remainingMs / maxWindow) * 100));
+        }
+
+        function formatDurationCompact(ms) {
+            const totalMinutes = Math.max(0, Math.ceil(ms / 60000));
+            const hours = Math.floor(totalMinutes / 60);
+            const minutes = totalMinutes % 60;
+            if (hours > 0 && minutes > 0) {
+                return `剩余 ${hours} 小时 ${minutes} 分钟`;
+            }
+            if (hours > 0) {
+                return `剩余 ${hours} 小时`;
+            }
+            return `剩余 ${minutes} 分钟`;
+        }
+
+        function hasActiveSessionError(session) {
+            const type = String(session.last_error_type || '').trim();
+            if (!type) {
+                return false;
+            }
+            const lastErrorTime = parseSessionTime(session.last_error_at);
+            const lastSuccessTime = parseSessionTime(session.last_success_at);
+            if (!lastErrorTime) {
+                return true;
+            }
+            return lastErrorTime >= lastSuccessTime;
+        }
+
+        function getSessionCapacityMetrics(session) {
+            const success = Number(session.success_requests || 0);
+            const totalTokens = Number(session.total_tokens || 0);
+            const avgTokens = Number(session.avg_tokens_per_success || 0);
+            const rateLimits = Number(session.rate_limit_requests || 0);
+            const avgBeforeLimit = Number(session.avg_successes_before_rate_limit || 0);
+
+            return {
+                successText: formatCompactNumber(success),
+                totalTokensText: totalTokens > 0 ? formatCompactNumber(totalTokens) : '-',
+                avgTokensText: avgTokens > 0 ? formatCompactNumber(avgTokens) : '-',
+                rateLimitText: rateLimits > 0 ? `${formatCompactNumber(rateLimits)} 次` : '0',
+                rateLimitClass: rateLimits > 0 ? 'metric-warn' : 'metric-good',
+                limitCycleText: avgBeforeLimit > 0 ? `≈ ${formatCompactNumber(avgBeforeLimit)} 次` : '暂无',
+                limitCycleClass: avgBeforeLimit > 0 ? 'metric-warn' : 'metric-good'
+            };
+        }
+
+        function formatCompactNumber(value) {
+            const number = Number(value || 0);
+            if (!Number.isFinite(number)) {
+                return '-';
+            }
+            const abs = Math.abs(number);
+            if (abs >= 1000000) {
+                return `${(number / 1000000).toFixed(abs >= 10000000 ? 0 : 1)}M`;
+            }
+            if (abs >= 1000) {
+                return `${(number / 1000).toFixed(abs >= 10000 ? 0 : 1)}K`;
+            }
+            if (Number.isInteger(number)) {
+                return String(number);
+            }
+            return number.toFixed(1);
+        }
+
+        function formatSessionDetailRows(session) {
+            const totalTokens = Number(session.total_tokens || 0);
+            const inputTokens = Number(session.input_tokens || 0);
+            const outputTokens = Number(session.output_tokens || 0);
+            const avgTokens = Number(session.avg_tokens_per_success || 0);
+            const rateLimitRequests = Number(session.rate_limit_requests || 0);
+            const avgBeforeLimit = Number(session.avg_successes_before_rate_limit || 0);
+            const rows = [
+                ['Org ID', session.org_id || '-'],
+                ['Cookie', session.cookie_preview || '-'],
+                ['最后报错', session.last_error || '-'],
+                ['报错模型', session.last_error_model || '-'],
+                ['请求统计', `${Number(session.success_requests || 0)} / ${Number(session.total_requests || 0)} 成功`],
+                ['成功率', formatSessionSuccessRate(session).text],
+                ['Token', `${formatCompactNumber(totalTokens)} 总量 · ${formatCompactNumber(inputTokens)} 输入 / ${formatCompactNumber(outputTokens)} 输出`],
+                ['平均 Token', avgTokens > 0 ? `${formatCompactNumber(avgTokens)} / 成功请求` : '-'],
+                ['限流画像', rateLimitRequests > 0 ? `${rateLimitRequests} 次限流 · 平均 ${avgBeforeLimit.toFixed(1)} 次成功后限流` : '暂无限流记录']
+            ];
+
+            return rows.map(([label, value]) => `
+                <div class="session-detail-row">
+                    <span>${escapeHtml(label)}</span>
+                    <strong>${escapeHtml(String(value || '-'))}</strong>
+                </div>
+            `).join('');
         }
 
         function getOrderedSessions() {

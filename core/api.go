@@ -657,7 +657,7 @@ func parseRateLimitReset(resp *req.Response) (time.Time, string) {
 	// Try standard Retry-After header (seconds or date)
 	if retryAfter := resp.Header.Get("Retry-After"); retryAfter != "" {
 		if resetAt, ok := parseRateLimitResetValue(retryAfter, now, true); ok {
-			return resetAt, resetAt.Format(time.RFC3339)
+			return resetAt, formatRateLimitResetAt(resetAt)
 		}
 		return time.Time{}, retryAfter
 	}
@@ -665,7 +665,7 @@ func parseRateLimitReset(resp *req.Response) (time.Time, string) {
 	// Try x-ratelimit-reset header
 	if reset := resp.Header.Get("x-ratelimit-reset"); reset != "" {
 		if resetAt, ok := parseRateLimitResetValue(reset, now, false); ok {
-			return resetAt, resetAt.Format(time.RFC3339)
+			return resetAt, formatRateLimitResetAt(resetAt)
 		}
 		return time.Time{}, reset
 	}
@@ -673,7 +673,7 @@ func parseRateLimitReset(resp *req.Response) (time.Time, string) {
 	// Try other common rate limit headers
 	if reset := resp.Header.Get("X-RateLimit-Reset"); reset != "" {
 		if resetAt, ok := parseRateLimitResetValue(reset, now, false); ok {
-			return resetAt, resetAt.Format(time.RFC3339)
+			return resetAt, formatRateLimitResetAt(resetAt)
 		}
 		return time.Time{}, reset
 	}
@@ -687,20 +687,28 @@ func parseRateLimitReset(resp *req.Response) (time.Time, string) {
 			if json.Unmarshal(bodyBytes, &body) == nil {
 				if resetAt, raw, ok := findRateLimitResetInJSON(body, now); ok {
 					if !resetAt.IsZero() {
-						return resetAt, resetAt.Format(time.RFC3339)
+						return resetAt, formatRateLimitResetAt(resetAt)
 					}
 					return time.Time{}, raw
 				}
 			}
 			bodyText := string(bodyBytes)
 			if resetAt, ok := parseRateLimitResetValue(bodyText, now, false); ok {
-				return resetAt, resetAt.Format(time.RFC3339)
+				return resetAt, formatRateLimitResetAt(resetAt)
 			}
 			return time.Time{}, bodyText
 		}
 	}
 
 	return time.Time{}, ""
+}
+
+func formatRateLimitResetAt(resetAt time.Time) string {
+	location, err := time.LoadLocation("Asia/Shanghai")
+	if err != nil {
+		location = time.FixedZone("CST", 8*60*60)
+	}
+	return resetAt.In(location).Format("2006-01-02 15:04:05 中国时间")
 }
 
 func findRateLimitResetInJSON(value interface{}, now time.Time) (time.Time, string, bool) {

@@ -67,3 +67,13 @@ func TestParseRateLimitResetValueFromClockText(t *testing.T) {
 		t.Fatalf("expected reset at %s, got %s", expected, resetAt)
 	}
 }
+
+func TestFormatRateLimitResetAtUsesChinaTime(t *testing.T) {
+	resetAt := time.Date(2026, 6, 19, 12, 7, 34, 0, time.UTC)
+
+	got := formatRateLimitResetAt(resetAt)
+	want := "2026-06-19 20:07:34 中国时间"
+	if got != want {
+		t.Fatalf("expected %q, got %q", want, got)
+	}
+}

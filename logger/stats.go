@@ -1,6 +1,7 @@
 package logger
 
 import (
+	"strings"
 	"sync"
 	"time"
 )
@@ -36,18 +37,27 @@ type Stats struct {
 
 // SessionStats represents aggregated statistics for a single session.
 type SessionStats struct {
-	TotalRequests   int64   `json:"total_requests"`
-	SuccessRequests int64   `json:"success_requests"`
-	FailedRequests  int64   `json:"failed_requests"`
-	SuccessRate     float64 `json:"success_rate"`
+	TotalRequests               int64   `json:"total_requests"`
+	SuccessRequests             int64   `json:"success_requests"`
+	FailedRequests              int64   `json:"failed_requests"`
+	RateLimitRequests           int64   `json:"rate_limit_requests"`
+	InputTokens                 int64   `json:"input_tokens"`
+	OutputTokens                int64   `json:"output_tokens"`
+	TotalTokens                 int64   `json:"total_tokens"`
+	AvgTokensPerSuccess         float64 `json:"avg_tokens_per_success"`
+	AvgSuccessesBeforeRateLimit float64 `json:"avg_successes_before_rate_limit"`
+	SuccessRate                 float64 `json:"success_rate"`
 }
 
 // RequestLogger manages request logging and statistics
 type RequestLogger struct {
-	logs     []RequestLog
-	mu       sync.RWMutex
-	maxLogs  int
-	startTime time.Time
+	logs                          []RequestLog
+	mu                            sync.RWMutex
+	maxLogs                       int
+	startTime                     time.Time
+	sessionStats                  map[int]SessionStats
+	successesSinceRateLimit       map[int]int64
+	successesBeforeRateLimitTotal map[int]int64
 }
 
 var GlobalRequestLogger *RequestLogger
@@ -59,9 +69,12 @@ func init() {
 // NewRequestLogger creates a new request logger
 func NewRequestLogger(maxLogs int) *RequestLogger {
 	return &RequestLogger{
-		logs:      make([]RequestLog, 0, maxLogs),
-		maxLogs:   maxLogs,
-		startTime: time.Now(),
+		logs:                          make([]RequestLog, 0, maxLogs),
+		maxLogs:                       maxLogs,
+		startTime:                     time.Now(),
+		sessionStats:                  make(map[int]SessionStats),
+		successesSinceRateLimit:       make(map[int]int64),
+		successesBeforeRateLimitTotal: make(map[int]int64),
 	}
 }
 
@@ -72,11 +85,38 @@ func (rl *RequestLogger) LogRequest(log RequestLog) {
 
 	// Add log
 	rl.logs = append(rl.logs, log)
+	rl.updateSessionStats(log)
 
 	// Trim if exceeds max
 	if len(rl.logs) > rl.maxLogs {
 		rl.logs = rl.logs[len(rl.logs)-rl.maxLogs:]
 	}
+}
+
+func (rl *RequestLogger) updateSessionStats(log RequestLog) {
+	if log.SessionIdx < 0 {
+		return
+	}
+
+	stats := rl.sessionStats[log.SessionIdx]
+	stats.TotalRequests++
+	stats.InputTokens += int64(log.InputTokens)
+	stats.OutputTokens += int64(log.OutputTokens)
+	stats.TotalTokens += int64(log.InputTokens + log.OutputTokens)
+	if log.Success {
+		stats.SuccessRequests++
+		rl.successesSinceRateLimit[log.SessionIdx]++
+	} else {
+		stats.FailedRequests++
+		if isRateLimitLog(log) {
+			stats.RateLimitRequests++
+			rl.successesBeforeRateLimitTotal[log.SessionIdx] += rl.successesSinceRateLimit[log.SessionIdx]
+			rl.successesSinceRateLimit[log.SessionIdx] = 0
+		}
+	}
+
+	finalizeSessionStats(&stats, rl.successesBeforeRateLimitTotal[log.SessionIdx])
+	rl.sessionStats[log.SessionIdx] = stats
 }
 
 // SetMaxLogs updates the retention limit and immediately trims old entries.
@@ -249,29 +289,34 @@ func (rl *RequestLogger) GetStatsBySession() map[int]SessionStats {
 	defer rl.mu.RUnlock()
 
 	result := make(map[int]SessionStats)
-	for _, log := range rl.logs {
-		if log.SessionIdx < 0 {
-			continue
-		}
-
-		stats := result[log.SessionIdx]
-		stats.TotalRequests++
-		if log.Success {
-			stats.SuccessRequests++
-		} else {
-			stats.FailedRequests++
-		}
-		result[log.SessionIdx] = stats
-	}
-
-	for sessionIdx, stats := range result {
-		if stats.TotalRequests > 0 {
-			stats.SuccessRate = float64(stats.SuccessRequests) / float64(stats.TotalRequests) * 100
-		}
+	for sessionIdx, stats := range rl.sessionStats {
 		result[sessionIdx] = stats
 	}
 
 	return result
+}
+
+func finalizeSessionStats(stats *SessionStats, successesBeforeRateLimitTotal int64) {
+	if stats.TotalRequests > 0 {
+		stats.SuccessRate = float64(stats.SuccessRequests) / float64(stats.TotalRequests) * 100
+	}
+	if stats.SuccessRequests > 0 {
+		stats.AvgTokensPerSuccess = float64(stats.TotalTokens) / float64(stats.SuccessRequests)
+	}
+	if stats.RateLimitRequests > 0 {
+		stats.AvgSuccessesBeforeRateLimit = float64(successesBeforeRateLimitTotal) / float64(stats.RateLimitRequests)
+	}
+}
+
+func isRateLimitLog(log RequestLog) bool {
+	errorType := strings.ToLower(strings.TrimSpace(log.ErrorType))
+	errorText := strings.ToLower(log.Error)
+	return strings.Contains(errorType, "限流") ||
+		strings.Contains(errorType, "rate limit") ||
+		strings.Contains(errorText, "rate limit") ||
+		strings.Contains(errorText, "too many requests") ||
+		strings.Contains(errorText, "retry-after") ||
+		strings.Contains(errorText, "429")
 }
 
 // GetLogsByTimeRange returns logs within a time range
@@ -295,4 +340,7 @@ func (rl *RequestLogger) Clear() {
 
 	rl.logs = make([]RequestLog, 0)
 	rl.startTime = time.Now()
+	rl.sessionStats = make(map[int]SessionStats)
+	rl.successesSinceRateLimit = make(map[int]int64)
+	rl.successesBeforeRateLimitTotal = make(map[int]int64)
 }
