@@ -29,7 +29,7 @@ jobs:
 
       - name: Extract image name
         id: image
-        run: echo "IMAGE_NAME=34v0wphix/${GITHUB_REPOSITORY#*/}" >> $GITHUB_OUTPUT
+        run: echo "IMAGE_NAME=${{ secrets.DOCKERHUB_USERNAME }}/${GITHUB_REPOSITORY#*/}" >> $GITHUB_OUTPUT
 
       - name: Extract tag version
         id: tag-version

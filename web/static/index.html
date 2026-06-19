@@ -3328,19 +3328,23 @@
                         if (result.org_id) {
                             session.org_id = result.org_id;
                         }
-                        if (typeof result.cookie_preview === 'string') {
-                            session.cookie_preview = result.cookie_preview;
-                        }
-                        updateSessionTable();
                     }
-                    alert('测试成功！Session 有效' + (result.org_id ? '\nOrg ID: ' + result.org_id : '') + (result.cookie_preview ? '\nCookies: ' + result.cookie_preview : ''));
+                    await loadData();
+                    await loadStats();
+                    const tokenText = result.total_tokens ? `\nToken: ${result.total_tokens}` : '';
+                    const modelText = result.model ? `\n模型: ${result.model}` : '';
+                    alert('测试成功！已完成一次 OpenAI 兼容请求' + modelText + tokenText + (result.org_id ? '\nOrg ID: ' + result.org_id : ''));
                 } else {
                     testBtn.textContent = '异常';
                     alert('测试失败: ' + result.message);
+                    await loadData();
+                    await loadStats();
                 }
             } catch (error) {
                 testBtn.textContent = '错误';
                 alert('测试失败: ' + error.message);
+                await loadData();
+                await loadStats();
             } finally {
                 setTimeout(() => {
                     testBtn.textContent = originalText;

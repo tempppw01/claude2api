@@ -5,8 +5,10 @@ import (
 	"claude2api/config"
 	"claude2api/core"
 	"claude2api/logger"
+	"claude2api/utils"
 	"fmt"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
@@ -241,6 +243,7 @@ type TestSessionRequest struct {
 	Index        int    `json:"index"`
 	CFClearance  string `json:"cf_clearance"`
 	CookieString string `json:"cookie_string"`
+	Model        string `json:"model"`
 }
 
 // AdminTestSessionHandler handles testing a session
@@ -265,32 +268,131 @@ func AdminTestSessionHandler(c *gin.Context) {
 		return
 	}
 
-	// Create client and test
-	client := core.NewClientFromSession(testSession, config.ConfigInstance.Proxy, "claude-sonnet-4-6-20260217")
-
-	// Try to get org ID as a test
-	orgID, err := client.GetOrgID()
+	result, err := runAdminOpenAITestRequest(c, testSession, req.Index, strings.TrimSpace(req.Model))
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"status":  "error",
-			"message": fmt.Sprintf("Failed to connect: %v", err),
+			"message": err.Error(),
 		})
 		return
 	}
 
 	// Update org ID if not set
 	if req.Index >= 0 && req.Index < len(config.ConfigInstance.Sessions) {
-		if config.ConfigInstance.Sessions[req.Index].OrgID == "" {
-			config.ConfigInstance.SetSessionOrgID(testSession.SessionKey, orgID)
+		if config.ConfigInstance.Sessions[req.Index].OrgID == "" && result.OrgID != "" {
+			config.ConfigInstance.SetSessionOrgID(testSession.SessionKey, result.OrgID)
 		}
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"status":         "ok",
-		"message":        "Session is valid",
-		"org_id":         orgID,
-		"cookie_preview": maskCookiePreview(testSession),
+		"status":        "ok",
+		"message":       "OpenAI request test passed",
+		"model":         result.Model,
+		"org_id":        result.OrgID,
+		"input_tokens":  result.InputTokens,
+		"output_tokens": result.OutputTokens,
+		"total_tokens":  result.InputTokens + result.OutputTokens,
 	})
+}
+
+type adminSessionTestResult struct {
+	Model        string
+	OrgID        string
+	InputTokens  int
+	OutputTokens int
+}
+
+func runAdminOpenAITestRequest(c *gin.Context, session config.SessionInfo, sessionIdx int, requestedModel string) (adminSessionTestResult, error) {
+	startTime := time.Now()
+	c.Set("request_message_count", 1)
+	if requestedModel == "" {
+		requestedModel = "claude-sonnet-4-6"
+	}
+
+	selectedModel := ResolveModel(requestedModel)
+	promptOverride, promptMode := resolvePromptOverride(selectedModel)
+	processor := utils.NewChatRequestProcessor()
+	processor.SetPromptOverride(promptOverride, promptMode)
+	processor.ProcessMessages([]map[string]interface{}{
+		{
+			"role":    "user",
+			"content": "Reply with OK only.",
+		},
+	})
+
+	recorder := httptest.NewRecorder()
+	testContext, _ := gin.CreateTestContext(recorder)
+	testContext.Request = c.Request.Clone(c.Request.Context())
+
+	modelName := selectedModel.UpstreamID
+	if selectedModel.Thinking {
+		modelName += "-think"
+	}
+
+	if session.OrgID == "" {
+		client := core.NewClientFromSession(session, config.ConfigInstance.Proxy, modelName)
+		orgID, err := client.GetOrgID()
+		if err != nil {
+			errorMessage := fmt.Sprintf("failed to get org ID: %s", core.GetErrorMessage(err))
+			logRequest(c, modelName, sessionIdx, 0, 0, false, startTime, errorMessage)
+			return adminSessionTestResult{Model: selectedModel.PublicID}, fmt.Errorf("OpenAI request test failed: %s", errorMessage)
+		}
+		session.OrgID = orgID
+		if sessionIdx >= 0 && sessionIdx < len(config.ConfigInstance.Sessions) {
+			config.ConfigInstance.SetSessionOrgID(session.SessionKey, orgID)
+		}
+	}
+
+	inputTokens, outputTokens, err := handleChatRequestWithTokens(
+		testContext,
+		session,
+		modelName,
+		processor,
+		false,
+		selectedModel.ThinkingMode,
+		selectedModel.EffortLevel,
+	)
+	if err != nil {
+		errorMessage := core.GetErrorMessage(err)
+		if core.IsRateLimitError(err) {
+			cooldownUntil := time.Time{}
+			if resetAt, ok := core.GetRateLimitResetAt(err); ok {
+				cooldownUntil = config.ConfigInstance.CooldownSessionUntil(session.SessionKey, resetAt)
+			}
+			if cooldownUntil.IsZero() {
+				cooldownUntil = config.ConfigInstance.CooldownSession(session.SessionKey, config.SessionRateLimitCooldown)
+			}
+			logger.Error(fmt.Sprintf(
+				"Admin session test hit rate limit for S%d (%s); cooling down until %s",
+				sessionIdx+1,
+				maskSessionKey(session.SessionKey),
+				formatChinaTime(cooldownUntil),
+			))
+		}
+		logRequest(c, modelName, sessionIdx, 0, 0, false, startTime, errorMessage)
+		return adminSessionTestResult{Model: selectedModel.PublicID}, fmt.Errorf("OpenAI request test failed: %s", errorMessage)
+	}
+	if inputTokens == 0 && outputTokens == 0 {
+		outputTokens = 1
+	}
+
+	logRequest(c, modelName, sessionIdx, inputTokens, outputTokens, true, startTime, "")
+	return adminSessionTestResult{
+		Model:        selectedModel.PublicID,
+		OrgID:        getSessionOrgID(session, sessionIdx),
+		InputTokens:  inputTokens,
+		OutputTokens: outputTokens,
+	}, nil
+}
+
+func getSessionOrgID(session config.SessionInfo, sessionIdx int) string {
+	if session.OrgID != "" {
+		return session.OrgID
+	}
+	if sessionIdx >= 0 && sessionIdx < len(config.ConfigInstance.Sessions) {
+		return config.ConfigInstance.Sessions[sessionIdx].OrgID
+	}
+	return ""
 }
 
 // UpdateConfigRequest represents the request body for updating config
