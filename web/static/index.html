@@ -970,8 +970,8 @@
 
         .session-list {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-            gap: 14px;
+            grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+            gap: 8px;
         }
 
         .session-card {
@@ -979,13 +979,13 @@
             overflow: hidden;
             display: flex;
             flex-direction: column;
-            gap: 14px;
-            min-height: 250px;
-            padding: 16px;
-            border-radius: 18px;
+            gap: 8px;
+            min-height: 0;
+            padding: 10px;
+            border-radius: 12px;
             border: 1px solid rgba(255,255,255,0.08);
             background: linear-gradient(145deg, rgba(255,255,255,0.08), rgba(255,255,255,0.035));
-            box-shadow: 0 16px 36px rgba(0,0,0,0.16);
+            box-shadow: 0 10px 22px rgba(0,0,0,0.12);
             animation: cardIn 0.42s ease both;
             transition: transform 0.22s ease, border-color 0.22s ease, background 0.22s ease;
         }
@@ -1012,25 +1012,26 @@
         .session-card-top {
             display: flex;
             justify-content: space-between;
-            gap: 12px;
+            gap: 8px;
             align-items: flex-start;
         }
 
         .session-identity {
             display: flex;
-            gap: 12px;
+            gap: 8px;
             min-width: 0;
         }
 
         .session-avatar {
-            width: 42px;
-            height: 42px;
+            width: 30px;
+            height: 30px;
             flex: 0 0 auto;
             display: grid;
             place-items: center;
-            border-radius: 14px;
+            border-radius: 10px;
             color: #10203a;
             font-weight: 800;
+            font-size: 0.8rem;
             background: linear-gradient(135deg, #43e97b, #38f9d7);
         }
 
@@ -1045,10 +1046,10 @@
 
         .session-key {
             display: block;
-            max-width: 230px;
+            max-width: 150px;
             color: var(--text-main);
             font-family: 'Consolas', 'Monaco', monospace;
-            font-size: 0.92rem;
+            font-size: 0.78rem;
             font-weight: 700;
             white-space: nowrap;
             overflow: hidden;
@@ -1056,20 +1057,24 @@
         }
 
         .session-subtitle {
-            margin-top: 4px;
+            margin-top: 2px;
             color: var(--text-sub);
-            font-size: 0.78rem;
+            font-size: 0.7rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 165px;
         }
 
         .session-status-chip {
             display: inline-flex;
             align-items: center;
             gap: 6px;
-            padding: 6px 10px;
+            padding: 4px 8px;
             border-radius: 999px;
             background: rgba(67,233,123,0.15);
             color: var(--success);
-            font-size: 0.78rem;
+            font-size: 0.68rem;
             font-weight: 800;
             white-space: nowrap;
         }
@@ -1086,8 +1091,21 @@
 
         .session-card-metrics {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(135px, 1fr));
-            gap: 10px;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 6px;
+        }
+
+        .session-compact-line {
+            padding: 7px 8px;
+            border-radius: 10px;
+            color: var(--text-sub);
+            font-size: 0.72rem;
+            line-height: 1.35;
+            background: rgba(0,0,0,0.14);
+            border: 1px solid rgba(255,255,255,0.06);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         .session-freeze-panel {
@@ -1207,8 +1225,8 @@
         }
 
         .session-mini-metric {
-            padding: 12px;
-            border-radius: 14px;
+            padding: 7px 8px;
+            border-radius: 10px;
             background: rgba(0,0,0,0.16);
             border: 1px solid rgba(255,255,255,0.06);
         }
@@ -1216,14 +1234,14 @@
         .session-mini-metric span {
             display: block;
             color: var(--text-sub);
-            font-size: 0.74rem;
+            font-size: 0.64rem;
             font-weight: 700;
         }
 
         .session-mini-metric strong {
             display: block;
-            margin-top: 6px;
-            font-size: 0.96rem;
+            margin-top: 3px;
+            font-size: 0.78rem;
             line-height: 1.25;
             word-break: break-word;
         }
@@ -1252,26 +1270,27 @@
 
         .session-card-actions {
             display: flex;
-            gap: 8px;
+            gap: 6px;
             flex-wrap: wrap;
             margin-top: auto;
         }
 
         .session-card-actions .btn {
-            min-width: 84px;
-            padding: 9px 12px;
+            min-width: 0;
+            padding: 6px 9px;
+            font-size: 0.72rem;
         }
 
         .session-details {
             border-top: 1px solid rgba(255,255,255,0.08);
-            padding-top: 10px;
+            padding-top: 6px;
         }
 
         .session-details summary {
             cursor: pointer;
             color: var(--text-sub);
             font-weight: 700;
-            font-size: 0.82rem;
+            font-size: 0.72rem;
             list-style: none;
         }
 
@@ -1904,6 +1923,14 @@
 
                             <div class="config-row">
                                 <div class="config-label">
+                                    <span class="config-label-text">内部重试次数</span>
+                                    <span class="config-label-desc">非限流错误时最多换几个 key；限流会停止本次扫描</span>
+                                </div>
+                                <input type="number" min="1" max="10" class="config-input" id="internalRetryCount" placeholder="1">
+                            </div>
+
+                            <div class="config-row">
+                                <div class="config-label">
                                     <span class="config-label-text">API Key</span>
                                     <span class="config-label-desc">访问 API 的认证密钥；留空表示不修改</span>
                                 </div>
@@ -2013,6 +2040,8 @@
                             </div>
                             <div style="display:flex; gap:8px; flex-wrap:wrap;">
                                 <button class="btn btn-secondary" id="sessionRefreshBtn" onclick="refreshSessions()">刷新</button>
+                                <button class="btn btn-success" id="batchTestPageBtn" onclick="batchTestSessions('page', this)">测活本页</button>
+                                <button class="btn btn-warning" id="batchTestAllBtn" onclick="batchTestSessions('all', this)">测活全部</button>
                                 <button class="btn btn-secondary" onclick="exportSessions('csv')">导出 CSV</button>
                                 <button class="btn btn-secondary" onclick="exportSessions('txt')">导出 TXT</button>
                             </div>
@@ -2045,6 +2074,24 @@
                             </div>
                             <div class="session-list" id="sessionTableBody">
                                 <div class="empty-state">加载中...</div>
+                            </div>
+                        </div>
+
+                        <div class="form-grid" style="margin-top:16px;">
+                            <div class="field" style="grid-column:1 / -1;">
+                                <label for="bulkSessionKeys">批量导入 Session Key</label>
+                                <textarea id="bulkSessionKeys" rows="5" placeholder="每行一个 sk-ant-sid...；也支持 key:orgID 或 key|orgID|cf_clearance|cookie"></textarea>
+                            </div>
+                            <div class="field">
+                                <label for="bulkCfClearance">批量 cf_clearance</label>
+                                <input type="text" id="bulkCfClearance" placeholder="可选，应用到未单独填写的 key">
+                            </div>
+                            <div class="field">
+                                <label for="bulkCookieString">批量 Cookie 串</label>
+                                <input type="text" id="bulkCookieString" placeholder="可选，应用到未单独填写的 key">
+                            </div>
+                            <div class="field" style="justify-content:flex-end;">
+                                <button class="btn btn-primary" id="bulkImportBtn" onclick="importSessions()">导入 Key</button>
                             </div>
                         </div>
 
@@ -2177,7 +2224,7 @@
         let currentConfig = {};
         let sessions = [];
         let sessionCurrentPage = 1;
-        const sessionPageSize = 10;
+        const sessionPageSize = 24;
         let modelDefinitions = [];
         let editingModelIndex = -1;
         let logsCurrentPage = 1;
@@ -2802,6 +2849,7 @@
             document.getElementById('toggleMirrorApi').classList.toggle('active', currentConfig.enable_mirror_api === true);
             document.getElementById('mirrorApiPrefix').value = currentConfig.mirror_api_prefix || '';
             document.getElementById('maxChatHistoryLength').value = currentConfig.max_chat_history_length || 10000;
+            document.getElementById('internalRetryCount').value = currentConfig.internal_retry_count || 1;
             document.getElementById('proxyInput').value = currentConfig.proxy || '';
             document.getElementById('apiKeyInput').placeholder = currentConfig.api_key || '输入新的 API Key';
             document.getElementById('adminPasswordConfigInput').value = '';
@@ -2825,7 +2873,7 @@
         }
 
         async function saveAllConfig() {
-            const btn = document.querySelector('#section-config .btn-primary');
+            const btn = document.querySelector('#section-config .config-save-btn');
             const originalText = btn.textContent;
             btn.textContent = '保存中...';
             btn.disabled = true;
@@ -2837,7 +2885,8 @@
                 enable_mirror_api: document.getElementById('toggleMirrorApi').classList.contains('active'),
                 mirror_api_prefix: document.getElementById('mirrorApiPrefix').value,
                 max_chat_history_length: parseInt(document.getElementById('maxChatHistoryLength').value, 10) || 10000,
-                proxy: document.getElementById('proxyInput').value.trim() || null,
+                internal_retry_count: parseInt(document.getElementById('internalRetryCount').value, 10) || 1,
+                proxy: document.getElementById('proxyInput').value.trim(),
                 global_prompt_override_mode: document.getElementById('globalPromptOverrideMode').value,
                 global_system_prompt_override: document.getElementById('globalSystemPromptOverride').value.trim(),
                 model_definitions: modelDefinitions
@@ -2927,28 +2976,22 @@
                             <span class="session-status-chip ${visual.className}">${escapeHtml(visual.label)}</span>
                         </div>
 
-                        ${formatSessionFreezePanel(visual)}
+                        <div class="session-compact-line" title="${escapeHtml(visual.compactTitle || visual.freezeHint || '')}">
+                            ${escapeHtml(visual.compactText || visual.freezeHint || '-')}
+                        </div>
 
                         <div class="session-card-metrics">
                             <div class="session-mini-metric highlight">
-                                <span>历史成功</span>
+                                <span>成功</span>
                                 <strong class="metric-good">${escapeHtml(capacity.successText)}</strong>
                             </div>
                             <div class="session-mini-metric highlight">
-                                <span>Token 总量</span>
+                                <span>Token</span>
                                 <strong>${escapeHtml(capacity.totalTokensText)}</strong>
                             </div>
-                            <div class="session-mini-metric">
-                                <span>平均 Token</span>
-                                <strong>${escapeHtml(capacity.avgTokensText)}</strong>
-                            </div>
                             <div class="session-mini-metric warning">
-                                <span>限流次数</span>
+                                <span>限流</span>
                                 <strong class="${capacity.rateLimitClass}">${escapeHtml(capacity.rateLimitText)}</strong>
-                            </div>
-                            <div class="session-mini-metric warning">
-                                <span>平均几次后限流</span>
-                                <strong class="${capacity.limitCycleClass}">${escapeHtml(capacity.limitCycleText)}</strong>
                             </div>
                             <div class="session-mini-metric">
                                 <span>${escapeHtml(visual.timeLabel)}</span>
@@ -3013,6 +3056,8 @@
                         ? `${escapeHtml(cooldownMeta.description)} <span class="session-freeze-time">${escapeHtml(cooldownUntil)}</span>`
                         : escapeHtml(cooldownMeta.emptySubtitle),
                     freezeHint: remainingText,
+                    compactText: cooldownUntil ? `${cooldownMeta.shortLabel} ${cooldownUntil} · ${remainingText}` : cooldownMeta.emptySubtitle,
+                    compactTitle: cooldownUntil ? `${cooldownMeta.title}\n${cooldownUntil}\n${remainingText}` : cooldownMeta.title,
                     progress,
                     timeLabel: cooldownMeta.timeLabel,
                     timeValue: cooldownUntil || '-'
@@ -3027,6 +3072,8 @@
                     freezeTitle: type || '异常',
                     freezeText: '不是冷却状态，需要检查最后报错或重新测试',
                     freezeHint: session.last_error_at || '-',
+                    compactText: `${type || '异常'} · ${session.last_error_at || '-'}`,
+                    compactTitle: session.last_error || type || '异常',
                     progress: 100,
                     timeLabel: '报错时间',
                     timeValue: session.last_error_at || '-'
@@ -3040,6 +3087,8 @@
                 freezeTitle: '当前可用',
                 freezeText: '没有冻结窗口，下一次请求可进入轮询',
                 freezeHint: lastSuccess ? `最后成功 ${lastSuccess}` : '暂无成功记录',
+                compactText: lastSuccess ? `最后成功 ${lastSuccess}` : '暂无成功记录',
+                compactTitle: '可参与请求轮询',
                 progress: 100,
                 timeLabel: '最后成功',
                 timeValue: lastSuccess || '-'
@@ -3348,6 +3397,100 @@
                 loadData();
             } catch (error) {
                 alert('添加失败: ' + error.message);
+            }
+        }
+
+        async function importSessions() {
+            const button = document.getElementById('bulkImportBtn');
+            const textarea = document.getElementById('bulkSessionKeys');
+            const cfInput = document.getElementById('bulkCfClearance');
+            const cookieInput = document.getElementById('bulkCookieString');
+            const rawSessions = textarea.value.trim();
+            if (!rawSessions) {
+                alert('请先粘贴要导入的 Session Key');
+                textarea.focus();
+                return;
+            }
+
+            const originalText = button.textContent;
+            button.disabled = true;
+            button.textContent = '导入中...';
+            try {
+                const response = await fetchAdmin('/admin-api/sessions/import', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        sessions: rawSessions,
+                        cf_clearance: cfInput.value.trim(),
+                        cookie_string: cookieInput.value.trim()
+                    })
+                });
+                const result = await response.json();
+                if (!response.ok) {
+                    throw new Error(result.error || '导入失败');
+                }
+                textarea.value = '';
+                cfInput.value = '';
+                cookieInput.value = '';
+                sessionCurrentPage = 1;
+                await loadData();
+                alert(`导入完成：新增 ${result.added || 0} 个，重复 ${result.duplicates || 0} 个，无效 ${result.invalid || 0} 个`);
+            } catch (error) {
+                alert('导入失败: ' + error.message);
+            } finally {
+                button.disabled = false;
+                button.textContent = originalText;
+            }
+        }
+
+        function getCurrentPageSessionIndices() {
+            const orderedSessions = getOrderedSessions();
+            const start = (sessionCurrentPage - 1) * sessionPageSize;
+            return orderedSessions
+                .slice(start, start + sessionPageSize)
+                .map(session => Number.isInteger(session.index) ? session.index : sessions.indexOf(session))
+                .filter(index => index >= 0);
+        }
+
+        async function batchTestSessions(scope, triggerButton) {
+            const button = triggerButton || document.getElementById(scope === 'all' ? 'batchTestAllBtn' : 'batchTestPageBtn');
+            const indices = scope === 'all' ? [] : getCurrentPageSessionIndices();
+            const total = scope === 'all' ? sessions.length : indices.length;
+            if (!total) {
+                alert('暂无可测活的 Session');
+                return;
+            }
+            if (scope === 'all' && !confirm(`确定要测活全部 ${total} 个 Session 吗？这会逐个发起真实 OpenAI 兼容请求。`)) {
+                return;
+            }
+
+            const originalText = button ? button.textContent : '';
+            if (button) {
+                button.disabled = true;
+                button.textContent = '测活中...';
+            }
+            try {
+                const response = await fetchAdmin('/admin-api/sessions/test', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ indices })
+                });
+                const result = await response.json();
+                if (!response.ok) {
+                    throw new Error(result.error || '批量测活失败');
+                }
+                await loadData();
+                await loadStats();
+                alert(`测活完成：成功 ${result.success || 0} 个，失败 ${result.failed || 0} 个；成功项已自动解冻`);
+            } catch (error) {
+                alert('批量测活失败: ' + error.message);
+                await loadData();
+                await loadStats();
+            } finally {
+                if (button) {
+                    button.disabled = false;
+                    button.textContent = originalText;
+                }
             }
         }
 

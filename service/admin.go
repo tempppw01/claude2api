@@ -161,6 +161,18 @@ type AddSessionRequest struct {
 	CookieString string `json:"cookie_string"`
 }
 
+type ImportSessionsRequest struct {
+	Sessions     string   `json:"sessions"`
+	SessionKeys  []string `json:"session_keys"`
+	CFClearance  string   `json:"cf_clearance"`
+	CookieString string   `json:"cookie_string"`
+}
+
+type BatchTestSessionsRequest struct {
+	Indices []int  `json:"indices"`
+	Model   string `json:"model"`
+}
+
 // AdminAddSessionHandler handles adding a new session
 func AdminAddSessionHandler(c *gin.Context) {
 	var req AddSessionRequest
@@ -207,6 +219,126 @@ func AdminAddSessionHandler(c *gin.Context) {
 		"status":        "added",
 		"session_count": len(config.ConfigInstance.Sessions),
 	})
+}
+
+// AdminImportSessionsHandler handles bulk importing session keys.
+func AdminImportSessionsHandler(c *gin.Context) {
+	var req ImportSessionsRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
+		return
+	}
+
+	candidates := parseImportSessionCandidates(req)
+	if len(candidates) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "No valid session keys found"})
+		return
+	}
+
+	existing := make(map[string]bool, len(config.ConfigInstance.Sessions))
+	for _, session := range config.ConfigInstance.Sessions {
+		existing[session.SessionKey] = true
+	}
+
+	added := 0
+	duplicates := 0
+	invalid := 0
+	imported := make([]gin.H, 0, len(candidates))
+	for _, candidate := range candidates {
+		if !strings.HasPrefix(candidate.SessionKey, "sk-ant-sid") {
+			invalid++
+			continue
+		}
+		if existing[candidate.SessionKey] {
+			duplicates++
+			continue
+		}
+		existing[candidate.SessionKey] = true
+		config.ConfigInstance.Sessions = append(config.ConfigInstance.Sessions, candidate)
+		imported = append(imported, gin.H{
+			"session_key": maskSessionKey(candidate.SessionKey),
+			"org_id":      candidate.OrgID,
+		})
+		added++
+	}
+	config.ConfigInstance.RetryCount = len(config.ConfigInstance.Sessions)
+	if config.ConfigInstance.RetryCount > 5 {
+		config.ConfigInstance.RetryCount = 5
+	}
+
+	if added > 0 {
+		if err := saveConfigToYAML(); err != nil {
+			logger.Error(fmt.Sprintf("Failed to save config: %v", err))
+		}
+	}
+
+	logger.Info(fmt.Sprintf("Imported %d sessions, skipped %d duplicates and %d invalid entries", added, duplicates, invalid))
+	c.JSON(http.StatusOK, gin.H{
+		"status":        "ok",
+		"added":         added,
+		"duplicates":    duplicates,
+		"invalid":       invalid,
+		"session_count": len(config.ConfigInstance.Sessions),
+		"imported":      imported,
+	})
+}
+
+func parseImportSessionCandidates(req ImportSessionsRequest) []config.SessionInfo {
+	lines := make([]string, 0)
+	lines = append(lines, req.SessionKeys...)
+	for _, line := range strings.FieldsFunc(req.Sessions, func(r rune) bool {
+		return r == '\n' || r == '\r'
+	}) {
+		lines = append(lines, line)
+	}
+
+	candidates := make([]config.SessionInfo, 0, len(lines))
+	defaultCFClearance := strings.TrimSpace(req.CFClearance)
+	defaultCookieString := strings.TrimSpace(req.CookieString)
+	for _, line := range lines {
+		session := parseImportSessionLine(line)
+		if session.SessionKey == "" {
+			continue
+		}
+		if session.CFClearance == "" {
+			session.CFClearance = defaultCFClearance
+		}
+		if session.CookieString == "" {
+			session.CookieString = defaultCookieString
+		}
+		candidates = append(candidates, session)
+	}
+	return candidates
+}
+
+func parseImportSessionLine(line string) config.SessionInfo {
+	line = strings.TrimSpace(line)
+	if line == "" {
+		return config.SessionInfo{}
+	}
+	line = strings.Trim(line, `"'`)
+	var parts []string
+	if strings.Contains(line, "|") {
+		parts = strings.SplitN(line, "|", 4)
+	} else if strings.Contains(line, "\t") {
+		parts = strings.SplitN(line, "\t", 4)
+	} else {
+		parts = strings.SplitN(line, ":", 2)
+	}
+	for i := range parts {
+		parts[i] = strings.TrimSpace(strings.Trim(parts[i], `"'`))
+	}
+	session := config.SessionInfo{SessionKey: parts[0]}
+	if len(parts) > 1 {
+		session.OrgID = parts[1]
+	}
+	if len(parts) > 2 {
+		session.CFClearance = parts[2]
+	}
+	if len(parts) > 3 {
+		session.CookieString = parts[3]
+	}
+	return session
 }
 
 // AdminRemoveSessionHandler handles removing a session
@@ -317,6 +449,7 @@ func AdminTestSessionHandler(c *gin.Context) {
 		if config.ConfigInstance.Sessions[req.Index].OrgID == "" && result.OrgID != "" {
 			config.ConfigInstance.SetSessionOrgID(testSession.SessionKey, result.OrgID)
 		}
+		config.ConfigInstance.ClearSessionCooldown(testSession.SessionKey)
 	}
 
 	c.JSON(http.StatusOK, gin.H{
@@ -328,6 +461,92 @@ func AdminTestSessionHandler(c *gin.Context) {
 		"output_tokens": result.OutputTokens,
 		"total_tokens":  result.InputTokens + result.OutputTokens,
 	})
+}
+
+// AdminBatchTestSessionsHandler tests multiple configured sessions.
+func AdminBatchTestSessionsHandler(c *gin.Context) {
+	var req BatchTestSessionsRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
+		return
+	}
+
+	indices := normalizeBatchTestIndices(req.Indices)
+	results := make([]gin.H, 0, len(indices))
+	successCount := 0
+	for position, index := range indices {
+		if index < 0 || index >= len(config.ConfigInstance.Sessions) {
+			results = append(results, gin.H{
+				"index":   index,
+				"status":  "error",
+				"message": "index out of range",
+			})
+			continue
+		}
+		session := config.ConfigInstance.Sessions[index]
+		result, err := runAdminOpenAITestRequest(c, session, index, strings.TrimSpace(req.Model))
+		if err != nil {
+			results = append(results, gin.H{
+				"index":       index,
+				"session_key": maskSessionKey(session.SessionKey),
+				"status":      "error",
+				"message":     err.Error(),
+			})
+			sleepBetweenBatchSessionTests(position, len(indices))
+			continue
+		}
+		if config.ConfigInstance.Sessions[index].OrgID == "" && result.OrgID != "" {
+			config.ConfigInstance.SetSessionOrgID(session.SessionKey, result.OrgID)
+		}
+		config.ConfigInstance.ClearSessionCooldown(session.SessionKey)
+		successCount++
+		results = append(results, gin.H{
+			"index":        index,
+			"session_key":  maskSessionKey(session.SessionKey),
+			"status":       "ok",
+			"message":      "OpenAI request test passed",
+			"model":        result.Model,
+			"org_id":       result.OrgID,
+			"total_tokens": result.InputTokens + result.OutputTokens,
+		})
+		sleepBetweenBatchSessionTests(position, len(indices))
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"status":        "ok",
+		"tested":        len(indices),
+		"success":       successCount,
+		"failed":        len(indices) - successCount,
+		"auto_unfrozen": successCount,
+		"results":       results,
+	})
+}
+
+func sleepBetweenBatchSessionTests(position int, total int) {
+	if position >= total-1 {
+		return
+	}
+	time.Sleep(800 * time.Millisecond)
+}
+
+func normalizeBatchTestIndices(indices []int) []int {
+	if len(indices) == 0 {
+		all := make([]int, len(config.ConfigInstance.Sessions))
+		for i := range config.ConfigInstance.Sessions {
+			all[i] = i
+		}
+		return all
+	}
+	seen := make(map[int]bool, len(indices))
+	normalized := make([]int, 0, len(indices))
+	for _, index := range indices {
+		if seen[index] {
+			continue
+		}
+		seen[index] = true
+		normalized = append(normalized, index)
+	}
+	return normalized
 }
 
 type adminSessionTestResult struct {
@@ -440,6 +659,7 @@ func getSessionOrgID(session config.SessionInfo, sessionIdx int) string {
 // UpdateConfigRequest represents the request body for updating config
 type UpdateConfigRequest struct {
 	MaxChatHistoryLength   *int                      `json:"max_chat_history_length"`
+	InternalRetryCount     *int                      `json:"internal_retry_count"`
 	ChatDelete             *bool                     `json:"chat_delete"`
 	NoRolePrefix           *bool                     `json:"no_role_prefix"`
 	PromptDisableArtifacts *bool                     `json:"prompt_disable_artifacts"`
@@ -469,6 +689,14 @@ func AdminUpdateConfigHandler(c *gin.Context) {
 			return
 		}
 		config.ConfigInstance.MaxChatHistoryLength = *req.MaxChatHistoryLength
+	}
+
+	if req.InternalRetryCount != nil {
+		if *req.InternalRetryCount < 1 || *req.InternalRetryCount > 10 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Internal retry count must be between 1 and 10"})
+			return
+		}
+		config.ConfigInstance.InternalRetryCount = config.NormalizeInternalRetryCount(*req.InternalRetryCount)
 	}
 
 	if req.ChatDelete != nil {
@@ -660,6 +888,7 @@ func buildAdminConfigResponse() gin.H {
 		"proxy":                         config.ConfigInstance.Proxy,
 		"chat_delete":                   config.ConfigInstance.ChatDelete,
 		"max_chat_history_length":       config.ConfigInstance.MaxChatHistoryLength,
+		"internal_retry_count":          config.NormalizeInternalRetryCount(config.ConfigInstance.InternalRetryCount),
 		"no_role_prefix":                config.ConfigInstance.NoRolePrefix,
 		"prompt_disable_artifacts":      config.ConfigInstance.PromptDisableArtifacts,
 		"enable_mirror_api":             config.ConfigInstance.EnableMirrorApi,
@@ -692,6 +921,7 @@ func saveConfigToYAML() error {
 		"proxy":                      config.ConfigInstance.Proxy,
 		"chatDelete":                 config.ConfigInstance.ChatDelete,
 		"maxChatHistoryLength":       config.ConfigInstance.MaxChatHistoryLength,
+		"internalRetryCount":         config.NormalizeInternalRetryCount(config.ConfigInstance.InternalRetryCount),
 		"noRolePrefix":               config.ConfigInstance.NoRolePrefix,
 		"promptDisableArtifacts":     config.ConfigInstance.PromptDisableArtifacts,
 		"enableMirrorApi":            config.ConfigInstance.EnableMirrorApi,

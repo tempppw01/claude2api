@@ -82,3 +82,15 @@ func TestCooldownSessionAfterRateLimitUsesFutureResetTime(t *testing.T) {
 		t.Fatalf("expected official cooldown source, got %s", cooldownSource)
 	}
 }
+
+func TestNormalizeInternalRetryCount(t *testing.T) {
+	if got := NormalizeInternalRetryCount(0); got != DefaultInternalRetryCount {
+		t.Fatalf("expected default retry count, got %d", got)
+	}
+	if got := NormalizeInternalRetryCount(3); got != 3 {
+		t.Fatalf("expected retry count 3, got %d", got)
+	}
+	if got := NormalizeInternalRetryCount(99); got != 10 {
+		t.Fatalf("expected retry count cap 10, got %d", got)
+	}
+}

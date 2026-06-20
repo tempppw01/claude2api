@@ -92,10 +92,7 @@ func ChatCompletionsHandler(c *gin.Context) {
 	lastSessionIdx := -1
 	attemptedSessions := 0
 	lastFailureWasRateLimit := false
-	maxAttempts := config.ConfigInstance.RetryCount
-	if maxAttempts <= 0 {
-		maxAttempts = sessionCount
-	}
+	maxAttempts := config.NormalizeInternalRetryCount(config.ConfigInstance.InternalRetryCount)
 	if maxAttempts > sessionCount {
 		maxAttempts = sessionCount
 	}
@@ -157,13 +154,12 @@ func ChatCompletionsHandler(c *gin.Context) {
 				formatChinaTime(cooldownUntil),
 				cooldownSource,
 			))
+			logger.Info("Stopping retry scan after rate limit to avoid freezing more sessions in one request")
+			break
 		}
 		if !core.IsRetryableError(err) {
 			logger.Error(fmt.Sprintf("Request failed with non-retryable error on session %d: %s", index+1, lastError))
 			break
-		}
-		if rateLimited && attemptedSessions >= maxAttempts && scannedSessions+1 < sessionCount {
-			maxAttempts++
 		}
 		if attemptedSessions < maxAttempts {
 			logger.Info(fmt.Sprintf("Retrying another session after retryable error: %s", lastError))

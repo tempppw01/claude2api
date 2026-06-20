@@ -17,6 +17,8 @@ chatDelete: true
 maxChatHistoryLength: 10000
 # 0 means auto: try up to the number of configured sessions.
 retryCount: 0
+# Non-rate-limit internal retries. Rate limits stop the current scan to avoid freezing more keys.
+internalRetryCount: 1
 requestLogRetention: 1000
 
 noRolePrefix: false

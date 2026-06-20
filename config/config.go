@@ -48,6 +48,7 @@ type Config struct {
 	ChatDelete                 bool                 `yaml:"chatDelete"`
 	MaxChatHistoryLength       int                  `yaml:"maxChatHistoryLength"`
 	RetryCount                 int                  `yaml:"retryCount"`
+	InternalRetryCount         int                  `yaml:"internalRetryCount"`
 	NoRolePrefix               bool                 `yaml:"noRolePrefix"`
 	PromptDisableArtifacts     bool                 `yaml:"promptDisableArtifacts"`
 	EnableMirrorApi            bool                 `yaml:"enableMirrorApi"`
@@ -64,6 +65,7 @@ type Config struct {
 
 const (
 	DefaultRequestLogRetention = 1000
+	DefaultInternalRetryCount  = 1
 	SessionRateLimitCooldown   = 6 * time.Minute
 	MinRateLimitResetWindow    = 30 * time.Second
 	CooldownSourceOfficial     = "official"
@@ -77,6 +79,16 @@ func NormalizeRequestLogRetention(value int) int {
 	default:
 		return DefaultRequestLogRetention
 	}
+}
+
+func NormalizeInternalRetryCount(value int) int {
+	if value < 1 {
+		return DefaultInternalRetryCount
+	}
+	if value > 10 {
+		return 10
+	}
+	return value
 }
 
 func MaskSecret(value string) string {
@@ -318,6 +330,7 @@ func loadConfigFromYAML(configPath string) (*Config, error) {
 		config.AdminPassword = "claude2apidev"
 	}
 	config.RequestLogRetention = NormalizeRequestLogRetention(config.RequestLogRetention)
+	config.InternalRetryCount = NormalizeInternalRetryCount(config.InternalRetryCount)
 
 	return &config, nil
 }
@@ -331,6 +344,10 @@ func loadConfigFromEnv() *Config {
 	requestLogRetention, err := strconv.Atoi(os.Getenv("REQUEST_LOG_RETENTION"))
 	if err != nil {
 		requestLogRetention = DefaultRequestLogRetention
+	}
+	internalRetryCount, err := strconv.Atoi(os.Getenv("INTERNAL_RETRY_COUNT"))
+	if err != nil {
+		internalRetryCount = DefaultInternalRetryCount
 	}
 	retryCount, sessions := parseSessionEnv(os.Getenv("SESSIONS"))
 	adminPassword := os.Getenv("ADMIN_PASSWORD")
@@ -353,6 +370,8 @@ func loadConfigFromEnv() *Config {
 		MaxChatHistoryLength: maxChatHistoryLength,
 		// 设置重试次数
 		RetryCount: retryCount,
+		// 设置内部重试次数
+		InternalRetryCount: NormalizeInternalRetryCount(internalRetryCount),
 		// 设置是否使用角色前缀
 		NoRolePrefix: os.Getenv("NO_ROLE_PREFIX") == "true",
 		// 设置是否使用提示词禁用artifacts
@@ -431,6 +450,7 @@ func createDefaultConfigFile(config *Config) error {
 		"proxy":                      config.Proxy,
 		"chatDelete":                 config.ChatDelete,
 		"maxChatHistoryLength":       config.MaxChatHistoryLength,
+		"internalRetryCount":         NormalizeInternalRetryCount(config.InternalRetryCount),
 		"noRolePrefix":               config.NoRolePrefix,
 		"promptDisableArtifacts":     config.PromptDisableArtifacts,
 		"enableMirrorApi":            config.EnableMirrorApi,
@@ -522,6 +542,7 @@ func init() {
 	logger.GlobalRequestLogger.SetMaxLogs(ConfigInstance.RequestLogRetention)
 	logger.Info("Loaded config:")
 	logger.Info(fmt.Sprintf("Max Retry count: %d", ConfigInstance.RetryCount))
+	logger.Info(fmt.Sprintf("Internal Retry count: %d", ConfigInstance.InternalRetryCount))
 	for _, session := range ConfigInstance.Sessions {
 		logger.Info(fmt.Sprintf("Session: %s, OrgID: %s", MaskSecret(session.SessionKey), MaskSecret(session.OrgID)))
 	}
