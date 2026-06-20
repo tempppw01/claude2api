@@ -86,14 +86,14 @@ func ChatCompletionsHandler(c *gin.Context) {
 		})
 		return
 	}
-	index := config.Sr.NextIndex()
+	startIndex := config.Sr.NextIndex()
 
 	lastError := "request failed"
 	lastSessionIdx := -1
 	attemptedSessions := 0
 	maxAttempts := config.ConfigInstance.RetryCount
 	if maxAttempts <= 0 {
-		maxAttempts = 1
+		maxAttempts = sessionCount
 	}
 	if maxAttempts > sessionCount {
 		maxAttempts = sessionCount
@@ -101,7 +101,7 @@ func ChatCompletionsHandler(c *gin.Context) {
 
 	// Attempt with retry mechanism
 	for scannedSessions := 0; scannedSessions < sessionCount && attemptedSessions < maxAttempts; scannedSessions++ {
-		index = (index + 1) % sessionCount
+		index := (startIndex + scannedSessions) % sessionCount
 		if cooldownUntil, coolingDown := config.ConfigInstance.GetSessionCooldownByIndex(index, time.Now()); coolingDown {
 			lastError = fmt.Sprintf("session S%d is cooling down until %s after rate limit", index+1, formatChinaTime(cooldownUntil))
 			logger.Info(fmt.Sprintf("Skipping session %d due to rate limit cooldown until %s", index+1, formatChinaTime(cooldownUntil)))
@@ -133,14 +133,16 @@ func ChatCompletionsHandler(c *gin.Context) {
 		}
 
 		lastError = core.GetErrorMessage(err)
-		if core.IsRateLimitError(err) {
+		rateLimited := core.IsRateLimitError(err)
+		if rateLimited {
 			cooldownUntil := time.Time{}
+			now := time.Now()
 			if resetAt, ok := core.GetRateLimitResetAt(err); ok {
-				cooldownUntil = config.ConfigInstance.CooldownSessionUntil(session.SessionKey, resetAt)
+				cooldownUntil = config.ConfigInstance.CooldownSessionAfterRateLimit(session.SessionKey, resetAt, now)
+			} else {
+				cooldownUntil = config.ConfigInstance.CooldownSessionAfterRateLimit(session.SessionKey, time.Time{}, now)
 			}
-			if cooldownUntil.IsZero() {
-				cooldownUntil = config.ConfigInstance.CooldownSession(session.SessionKey, config.SessionRateLimitCooldown)
-			}
+			lastError = fmt.Sprintf("rate limit exceeded - reset at: %s 中国时间", formatChinaTime(cooldownUntil))
 			logger.Error(fmt.Sprintf(
 				"Session %d (%s) hit rate limit; cooling down until %s",
 				index+1,
@@ -151,6 +153,9 @@ func ChatCompletionsHandler(c *gin.Context) {
 		if !core.IsRetryableError(err) {
 			logger.Error(fmt.Sprintf("Request failed with non-retryable error on session %d: %s", index+1, lastError))
 			break
+		}
+		if rateLimited && attemptedSessions >= maxAttempts && scannedSessions+1 < sessionCount {
+			maxAttempts++
 		}
 		if attemptedSessions < maxAttempts {
 			logger.Info(fmt.Sprintf("Retrying another session after retryable error: %s", lastError))

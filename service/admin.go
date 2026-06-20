@@ -356,12 +356,13 @@ func runAdminOpenAITestRequest(c *gin.Context, session config.SessionInfo, sessi
 		errorMessage := core.GetErrorMessage(err)
 		if core.IsRateLimitError(err) {
 			cooldownUntil := time.Time{}
+			now := time.Now()
 			if resetAt, ok := core.GetRateLimitResetAt(err); ok {
-				cooldownUntil = config.ConfigInstance.CooldownSessionUntil(session.SessionKey, resetAt)
+				cooldownUntil = config.ConfigInstance.CooldownSessionAfterRateLimit(session.SessionKey, resetAt, now)
+			} else {
+				cooldownUntil = config.ConfigInstance.CooldownSessionAfterRateLimit(session.SessionKey, time.Time{}, now)
 			}
-			if cooldownUntil.IsZero() {
-				cooldownUntil = config.ConfigInstance.CooldownSession(session.SessionKey, config.SessionRateLimitCooldown)
-			}
+			errorMessage = fmt.Sprintf("rate limit exceeded - reset at: %s 中国时间", formatChinaTime(cooldownUntil))
 			logger.Error(fmt.Sprintf(
 				"Admin session test hit rate limit for S%d (%s); cooling down until %s",
 				sessionIdx+1,

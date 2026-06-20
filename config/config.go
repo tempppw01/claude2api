@@ -64,6 +64,7 @@ type Config struct {
 const (
 	DefaultRequestLogRetention = 1000
 	SessionRateLimitCooldown   = 5 * time.Hour
+	MinRateLimitResetWindow    = 30 * time.Second
 )
 
 func NormalizeRequestLogRetention(value int) int {
@@ -153,6 +154,16 @@ func (c *Config) CooldownSessionUntil(sessionKey string, until time.Time) time.T
 	}
 	c.SessionCooldownUntil[sessionKey] = until
 	return until
+}
+
+func (c *Config) CooldownSessionAfterRateLimit(sessionKey string, resetAt time.Time, now time.Time) time.Time {
+	if now.IsZero() {
+		now = time.Now()
+	}
+	if !resetAt.IsZero() && resetAt.After(now.Add(MinRateLimitResetWindow)) {
+		return c.CooldownSessionUntil(sessionKey, resetAt)
+	}
+	return c.CooldownSessionUntil(sessionKey, now.Add(SessionRateLimitCooldown))
 }
 
 func (c *Config) ClearSessionCooldown(sessionKey string) {

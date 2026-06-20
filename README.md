@@ -106,7 +106,7 @@ adminPassword: "REPLACE_WITH_A_STRONG_ADMIN_PASSWORD"
 
 chatDelete: true
 maxChatHistoryLength: 10000
-retryCount: 1
+retryCount: 0
 requestLogRetention: 1000
 
 noRolePrefix: false
@@ -141,6 +141,8 @@ modelDefinitions: []
 | `REQUEST_LOG_RETENTION` | 管理面板保留的请求日志条数，可选 `100`、`500`、`1000`、`3000` | `1000` |
 
 生产环境请务必修改 `adminPassword` 和 `apiKey`。
+
+`retryCount` 为 `0` 或未配置时，会按当前 Session 数量自动尝试，最多不超过可用 Session 总数。即使你把 `retryCount` 设置得较低，命中限流时也会继续扫描其它未冷却的 Session，避免单个 key 限流直接中断连续请求。
 
 ## 模型说明
 
@@ -269,6 +271,8 @@ http://localhost:8080/admin
 - 文本中的自然语言时间提示
 
 解析成功时按 Claude 返回的重置时间冷却；解析失败时默认冷却 5 小时。管理面板显示的时间按中国时间格式展示。冷却信息保存在运行内存中，服务重启后会清空。
+
+如果 Claude 返回的 reset 时间等于当前请求时间，或距离当前时间太近，项目会认为这个时间不可用于冷却，并使用默认 5 小时冷却兜底。
 
 ## 安全与隐私
 

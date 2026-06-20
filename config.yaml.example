@@ -15,7 +15,8 @@ adminPassword: "REPLACE_WITH_A_STRONG_ADMIN_PASSWORD"
 
 chatDelete: true
 maxChatHistoryLength: 10000
-retryCount: 1
+# 0 means auto: try up to the number of configured sessions.
+retryCount: 0
 requestLogRetention: 1000
 
 noRolePrefix: false
