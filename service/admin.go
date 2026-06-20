@@ -32,10 +32,12 @@ func AdminStatusHandler(c *gin.Context) {
 	for i, session := range config.ConfigInstance.Sessions {
 		maskedKey := maskSessionKey(session.SessionKey)
 		cooldownUntil := ""
+		cooldownSource := ""
 		coolingDown := false
-		if until, ok := config.ConfigInstance.GetSessionCooldownByIndex(i, now); ok {
+		if until, source, ok := config.ConfigInstance.GetSessionCooldownInfoByIndex(i, now); ok {
 			coolingDown = true
 			cooldownUntil = formatChinaTime(until)
+			cooldownSource = source
 		}
 		lastSuccessAt := ""
 		if lastSuccess, ok := lastSuccessBySession[i]; ok {
@@ -61,6 +63,8 @@ func AdminStatusHandler(c *gin.Context) {
 			"cookie_preview":                  maskCookiePreview(session),
 			"cooling_down":                    coolingDown,
 			"cooldown_until":                  cooldownUntil,
+			"cooldown_source":                 cooldownSource,
+			"cooldown_official":               cooldownSource == config.CooldownSourceOfficial,
 			"last_success_at":                 lastSuccessAt,
 			"last_error_at":                   lastErrorAt,
 			"last_error_type":                 lastErrorType,
@@ -237,6 +241,30 @@ func AdminRemoveSessionHandler(c *gin.Context) {
 	})
 }
 
+// AdminClearSessionCooldownHandler clears a runtime cooldown for a session.
+func AdminClearSessionCooldownHandler(c *gin.Context) {
+	indexStr := c.Param("index")
+	var index int
+	if _, err := fmt.Sscanf(indexStr, "%d", &index); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid index"})
+		return
+	}
+
+	if index < 0 || index >= len(config.ConfigInstance.Sessions) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Index out of range"})
+		return
+	}
+
+	session := config.ConfigInstance.Sessions[index]
+	config.ConfigInstance.ClearSessionCooldown(session.SessionKey)
+	logger.Info(fmt.Sprintf("Cleared cooldown for session %d (%s)", index+1, maskSessionKey(session.SessionKey)))
+
+	c.JSON(http.StatusOK, gin.H{
+		"status":  "ok",
+		"message": "cooldown cleared",
+	})
+}
+
 // TestSessionRequest represents the request body for testing a session
 type TestSessionRequest struct {
 	SessionKey   string `json:"session_key"`
@@ -356,18 +384,24 @@ func runAdminOpenAITestRequest(c *gin.Context, session config.SessionInfo, sessi
 		errorMessage := core.GetErrorMessage(err)
 		if core.IsRateLimitError(err) {
 			cooldownUntil := time.Time{}
+			cooldownSource := ""
 			now := time.Now()
 			if resetAt, ok := core.GetRateLimitResetAt(err); ok {
-				cooldownUntil = config.ConfigInstance.CooldownSessionAfterRateLimit(session.SessionKey, resetAt, now)
+				cooldownUntil, cooldownSource = config.ConfigInstance.CooldownSessionAfterRateLimit(session.SessionKey, resetAt, now)
 			} else {
-				cooldownUntil = config.ConfigInstance.CooldownSessionAfterRateLimit(session.SessionKey, time.Time{}, now)
+				cooldownUntil, cooldownSource = config.ConfigInstance.CooldownSessionAfterRateLimit(session.SessionKey, time.Time{}, now)
 			}
-			errorMessage = fmt.Sprintf("rate limit exceeded - reset at: %s 中国时间", formatChinaTime(cooldownUntil))
+			if cooldownSource == config.CooldownSourceOfficial {
+				errorMessage = fmt.Sprintf("rate limit exceeded - Claude official reset at: %s 中国时间", formatChinaTime(cooldownUntil))
+			} else {
+				errorMessage = fmt.Sprintf("rate limit exceeded - estimated cooldown until: %s 中国时间 (Claude did not return a usable future reset time)", formatChinaTime(cooldownUntil))
+			}
 			logger.Error(fmt.Sprintf(
-				"Admin session test hit rate limit for S%d (%s); cooling down until %s",
+				"Admin session test hit rate limit for S%d (%s); cooling down until %s (source: %s)",
 				sessionIdx+1,
 				maskSessionKey(session.SessionKey),
 				formatChinaTime(cooldownUntil),
+				cooldownSource,
 			))
 		}
 		logRequest(c, modelName, sessionIdx, 0, 0, false, startTime, errorMessage)

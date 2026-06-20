@@ -91,6 +91,7 @@ func ChatCompletionsHandler(c *gin.Context) {
 	lastError := "request failed"
 	lastSessionIdx := -1
 	attemptedSessions := 0
+	lastFailureWasRateLimit := false
 	maxAttempts := config.ConfigInstance.RetryCount
 	if maxAttempts <= 0 {
 		maxAttempts = sessionCount
@@ -134,20 +135,27 @@ func ChatCompletionsHandler(c *gin.Context) {
 
 		lastError = core.GetErrorMessage(err)
 		rateLimited := core.IsRateLimitError(err)
+		lastFailureWasRateLimit = rateLimited
 		if rateLimited {
 			cooldownUntil := time.Time{}
+			cooldownSource := ""
 			now := time.Now()
 			if resetAt, ok := core.GetRateLimitResetAt(err); ok {
-				cooldownUntil = config.ConfigInstance.CooldownSessionAfterRateLimit(session.SessionKey, resetAt, now)
+				cooldownUntil, cooldownSource = config.ConfigInstance.CooldownSessionAfterRateLimit(session.SessionKey, resetAt, now)
 			} else {
-				cooldownUntil = config.ConfigInstance.CooldownSessionAfterRateLimit(session.SessionKey, time.Time{}, now)
+				cooldownUntil, cooldownSource = config.ConfigInstance.CooldownSessionAfterRateLimit(session.SessionKey, time.Time{}, now)
 			}
-			lastError = fmt.Sprintf("rate limit exceeded - reset at: %s 中国时间", formatChinaTime(cooldownUntil))
+			if cooldownSource == config.CooldownSourceOfficial {
+				lastError = fmt.Sprintf("rate limit exceeded - Claude official reset at: %s 中国时间", formatChinaTime(cooldownUntil))
+			} else {
+				lastError = fmt.Sprintf("rate limit exceeded - estimated cooldown until: %s 中国时间 (Claude did not return a usable future reset time)", formatChinaTime(cooldownUntil))
+			}
 			logger.Error(fmt.Sprintf(
-				"Session %d (%s) hit rate limit; cooling down until %s",
+				"Session %d (%s) hit rate limit; cooling down until %s (source: %s)",
 				index+1,
 				maskSessionKey(session.SessionKey),
 				formatChinaTime(cooldownUntil),
+				cooldownSource,
 			))
 		}
 		if !core.IsRetryableError(err) {
@@ -162,18 +170,49 @@ func ChatCompletionsHandler(c *gin.Context) {
 		}
 	}
 
+	statusCode := http.StatusInternalServerError
 	if attemptedSessions == 0 {
 		lastError = "all Claude sessions are cooling down after rate limits"
+		if earliestUntil, earliestSource, ok := getEarliestSessionCooldown(time.Now()); ok {
+			if earliestSource == config.CooldownSourceOfficial {
+				lastError = fmt.Sprintf("%s; earliest Claude official reset at: %s 中国时间", lastError, formatChinaTime(earliestUntil))
+			} else {
+				lastError = fmt.Sprintf("%s; earliest estimated cooldown until: %s 中国时间", lastError, formatChinaTime(earliestUntil))
+			}
+		}
+		statusCode = http.StatusTooManyRequests
 		logger.Error(lastError)
 	} else if attemptedSessions > 1 {
+		if lastFailureWasRateLimit {
+			statusCode = http.StatusTooManyRequests
+		}
 		logger.Error(fmt.Sprintf("Failed after %d attempts", attemptedSessions))
 	} else {
+		if lastFailureWasRateLimit {
+			statusCode = http.StatusTooManyRequests
+		}
 		logger.Error("Request failed")
 	}
 	logRequest(c, model, lastSessionIdx, 0, 0, false, startTime, lastError)
-	c.JSON(http.StatusInternalServerError, ErrorResponse{
+	c.JSON(statusCode, ErrorResponse{
 		Error: lastError,
 	})
+}
+
+func getEarliestSessionCooldown(now time.Time) (time.Time, string, bool) {
+	earliestUntil := time.Time{}
+	earliestSource := ""
+	for i := range config.ConfigInstance.Sessions {
+		cooldownUntil, cooldownSource, coolingDown := config.ConfigInstance.GetSessionCooldownInfoByIndex(i, now)
+		if !coolingDown {
+			continue
+		}
+		if earliestUntil.IsZero() || cooldownUntil.Before(earliestUntil) {
+			earliestUntil = cooldownUntil
+			earliestSource = cooldownSource
+		}
+	}
+	return earliestUntil, earliestSource, !earliestUntil.IsZero()
 }
 
 func MirrorChatHandler(c *gin.Context) {

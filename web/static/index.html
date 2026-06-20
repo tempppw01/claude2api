@@ -508,6 +508,11 @@
             color: #10203a;
         }
 
+        .btn-warning {
+            background: linear-gradient(90deg, #fbbf24 0%, #f59e0b 100%);
+            color: #1f1603;
+        }
+
         .btn-danger {
             background: linear-gradient(90deg, #f87171 0%, #ef4444 100%);
             color: white;
@@ -1103,6 +1108,13 @@
                 rgba(0,0,0,0.12);
         }
 
+        .session-freeze-panel.cooling.official {
+            border-color: rgba(56,249,215,0.26);
+            background:
+                linear-gradient(135deg, rgba(56,249,215,0.13), rgba(102,126,234,0.09)),
+                rgba(0,0,0,0.12);
+        }
+
         .session-freeze-panel.error {
             border-color: rgba(248,113,113,0.26);
             background: rgba(248,113,113,0.09);
@@ -1184,6 +1196,10 @@
 
         .session-freeze-panel.cooling .session-freeze-progress span {
             background: linear-gradient(90deg, #f59e0b, #fbbf24);
+        }
+
+        .session-freeze-panel.cooling.official .session-freeze-progress span {
+            background: linear-gradient(90deg, #43e97b, #38f9d7);
         }
 
         .session-freeze-panel.error .session-freeze-progress span {
@@ -2895,6 +2911,9 @@
                 const details = formatSessionDetailRows(session);
                 const sessionIndex = Number.isInteger(session.index) ? session.index : sessions.indexOf(session);
                 const displayIndex = start + pageIndex + 1;
+                const cooldownAction = session.cooling_down === true
+                    ? `<button class="btn btn-warning" onclick="clearSessionCooldown(${sessionIndex}, this)">解除冻结</button>`
+                    : '';
                 return `
                     <article class="session-card ${visual.className}" style="animation-delay:${Math.min(pageIndex * 45, 280)}ms">
                         <div class="session-card-top">
@@ -2944,6 +2963,7 @@
 
                         <div class="session-card-actions">
                             <button class="btn btn-success" onclick="testSession(${sessionIndex}, this)">测试</button>
+                            ${cooldownAction}
                             <button class="btn btn-danger" onclick="removeSession(${sessionIndex})">删除</button>
                         </div>
                     </article>
@@ -2973,6 +2993,7 @@
         function getSessionVisualState(session) {
             const coolingDown = session.cooling_down === true;
             const cooldownUntil = String(session.cooldown_until || '').trim();
+            const cooldownMeta = getCooldownSourceMeta(session);
             const type = String(session.last_error_type || '').trim();
             const lastSuccess = String(session.last_success_at || '').trim();
             if (coolingDown) {
@@ -2983,15 +3004,17 @@
                     ? (remainingMs > 0 ? formatDurationCompact(remainingMs) : '已到解冻时间，等待刷新')
                     : '等待 Claude 返回解冻时间';
                 return {
-                    className: 'cooling',
+                    className: `cooling ${cooldownMeta.className}`.trim(),
                     label: '冻结中',
-                    subtitle: cooldownUntil ? `冻结到 ${cooldownUntil}` : '等待限流恢复',
+                    subtitle: cooldownUntil ? `${cooldownMeta.shortLabel} ${cooldownUntil}` : cooldownMeta.emptySubtitle,
                     freezeIcon: '⏳',
-                    freezeTitle: '当前已冻结',
-                    freezeText: cooldownUntil ? `将在 <span class="session-freeze-time">${escapeHtml(cooldownUntil)}</span> 自动解冻` : '正在等待接口返回解冻窗口',
+                    freezeTitle: cooldownMeta.title,
+                    freezeText: cooldownUntil
+                        ? `${escapeHtml(cooldownMeta.description)} <span class="session-freeze-time">${escapeHtml(cooldownUntil)}</span>`
+                        : escapeHtml(cooldownMeta.emptySubtitle),
                     freezeHint: remainingText,
                     progress,
-                    timeLabel: '解冻时间',
+                    timeLabel: cooldownMeta.timeLabel,
                     timeValue: cooldownUntil || '-'
                 };
             }
@@ -3020,6 +3043,41 @@
                 progress: 100,
                 timeLabel: '最后成功',
                 timeValue: lastSuccess || '-'
+            };
+        }
+
+        function getCooldownSourceMeta(session) {
+            const source = String(session.cooldown_source || '').trim();
+            if (source === 'official' || session.cooldown_official === true) {
+                return {
+                    source,
+                    className: 'official',
+                    shortLabel: '官方解冻',
+                    title: 'Claude 官方限流',
+                    description: 'Claude 返回解冻时间',
+                    emptySubtitle: '等待 Claude 返回官方解冻时间',
+                    timeLabel: '官方解冻'
+                };
+            }
+            if (source === 'fallback') {
+                return {
+                    source,
+                    className: 'fallback',
+                    shortLabel: '估算解冻',
+                    title: '项目估算冷却',
+                    description: 'Claude 未返回可用未来时间，项目估算到',
+                    emptySubtitle: '项目按默认冷却保护',
+                    timeLabel: '估算解冻'
+                };
+            }
+            return {
+                source,
+                className: 'fallback',
+                shortLabel: '冷却到',
+                title: '等待限流恢复',
+                description: '当前冷却到',
+                emptySubtitle: '等待限流恢复',
+                timeLabel: '解冻时间'
             };
         }
 
@@ -3116,9 +3174,15 @@
             const avgTokens = Number(session.avg_tokens_per_success || 0);
             const rateLimitRequests = Number(session.rate_limit_requests || 0);
             const avgBeforeLimit = Number(session.avg_successes_before_rate_limit || 0);
+            const cooldownMeta = getCooldownSourceMeta(session);
+            const cooldownUntil = String(session.cooldown_until || '').trim();
+            const cooldownSourceText = session.cooling_down === true
+                ? `${cooldownMeta.shortLabel}${cooldownUntil ? ` · ${cooldownUntil}` : ''}`
+                : '-';
             const rows = [
                 ['Org ID', session.org_id || '-'],
                 ['Cookie', session.cookie_preview || '-'],
+                ['冷却来源', cooldownSourceText],
                 ['最后报错', session.last_error || '-'],
                 ['报错模型', session.last_error_model || '-'],
                 ['请求统计', `${Number(session.success_requests || 0)} / ${Number(session.total_requests || 0)} 成功`],
@@ -3218,13 +3282,15 @@
             const model = String(session.last_error_model || '').trim();
             const coolingDown = session.cooling_down === true;
             const cooldownUntil = String(session.cooldown_until || '').trim();
+            const cooldownMeta = getCooldownSourceMeta(session);
 
             if (!message && !type && !coolingDown) {
                 return '<span class="session-error-empty">-</span>';
             }
 
-            const label = coolingDown ? '冷却中' : (type || '报错');
+            const label = coolingDown ? cooldownMeta.shortLabel : (type || '报错');
             const titleParts = [];
+            if (coolingDown) titleParts.push(`冷却来源: ${cooldownMeta.title}`);
             if (cooldownUntil) titleParts.push(`冷却到: ${cooldownUntil}`);
             if (time) titleParts.push(`时间: ${time}`);
             if (model) titleParts.push(`模型: ${model}`);
@@ -3301,6 +3367,38 @@
                 loadData();
             } catch (error) {
                 alert('删除失败: ' + error.message);
+            }
+        }
+
+        async function clearSessionCooldown(index, triggerButton) {
+            const button = triggerButton || document.querySelector(`#sessionTableBody .btn-warning[onclick*="clearSessionCooldown(${index}"]`);
+            const originalText = button ? button.textContent : '';
+            if (button) {
+                button.textContent = '解除中...';
+                button.disabled = true;
+            }
+
+            try {
+                const response = await fetchAdmin(`/admin-api/session/${index}/cooldown/clear`, {
+                    method: 'POST'
+                });
+                const result = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(result.error || '解除失败');
+                }
+
+                await loadData();
+                await loadStats();
+            } catch (error) {
+                alert('解除冻结失败: ' + error.message);
+            } finally {
+                if (button) {
+                    setTimeout(() => {
+                        button.textContent = originalText;
+                        button.disabled = false;
+                    }, 900);
+                }
             }
         }
 

@@ -58,6 +58,7 @@ type Config struct {
 	ModelDefinitions           []ModelDefinition    `yaml:"modelDefinitions"`
 	RequestLogRetention        int                  `yaml:"requestLogRetention"`
 	SessionCooldownUntil       map[string]time.Time `yaml:"-" json:"-"`
+	SessionCooldownSource      map[string]string    `yaml:"-" json:"-"`
 	RwMutx                     sync.RWMutex         `yaml:"-"` // 不从YAML加载
 }
 
@@ -65,6 +66,8 @@ const (
 	DefaultRequestLogRetention = 1000
 	SessionRateLimitCooldown   = 5 * time.Hour
 	MinRateLimitResetWindow    = 30 * time.Second
+	CooldownSourceOfficial     = "official"
+	CooldownSourceFallback     = "fallback"
 )
 
 func NormalizeRequestLogRetention(value int) int {
@@ -128,6 +131,9 @@ func (c *Config) ensureRuntimeStateLocked() {
 	if c.SessionCooldownUntil == nil {
 		c.SessionCooldownUntil = make(map[string]time.Time)
 	}
+	if c.SessionCooldownSource == nil {
+		c.SessionCooldownSource = make(map[string]string)
+	}
 }
 
 func (c *Config) CooldownSession(sessionKey string, duration time.Duration) time.Time {
@@ -136,13 +142,22 @@ func (c *Config) CooldownSession(sessionKey string, duration time.Duration) time
 		return time.Time{}
 	}
 
-	return c.CooldownSessionUntil(sessionKey, time.Now().Add(duration))
+	cooldownUntil, _ := c.setSessionCooldownUntil(sessionKey, time.Now().Add(duration), CooldownSourceFallback)
+	return cooldownUntil
 }
 
 func (c *Config) CooldownSessionUntil(sessionKey string, until time.Time) time.Time {
+	cooldownUntil, _ := c.setSessionCooldownUntil(sessionKey, until, CooldownSourceOfficial)
+	return cooldownUntil
+}
+
+func (c *Config) setSessionCooldownUntil(sessionKey string, until time.Time, source string) (time.Time, string) {
 	sessionKey = strings.TrimSpace(sessionKey)
 	if sessionKey == "" || until.IsZero() {
-		return time.Time{}
+		return time.Time{}, ""
+	}
+	if source == "" {
+		source = CooldownSourceFallback
 	}
 
 	c.RwMutx.Lock()
@@ -150,20 +165,25 @@ func (c *Config) CooldownSessionUntil(sessionKey string, until time.Time) time.T
 
 	c.ensureRuntimeStateLocked()
 	if existingUntil, exists := c.SessionCooldownUntil[sessionKey]; exists && existingUntil.After(until) {
-		return existingUntil
+		existingSource := c.SessionCooldownSource[sessionKey]
+		if existingSource == "" {
+			existingSource = CooldownSourceFallback
+		}
+		return existingUntil, existingSource
 	}
 	c.SessionCooldownUntil[sessionKey] = until
-	return until
+	c.SessionCooldownSource[sessionKey] = source
+	return until, source
 }
 
-func (c *Config) CooldownSessionAfterRateLimit(sessionKey string, resetAt time.Time, now time.Time) time.Time {
+func (c *Config) CooldownSessionAfterRateLimit(sessionKey string, resetAt time.Time, now time.Time) (time.Time, string) {
 	if now.IsZero() {
 		now = time.Now()
 	}
 	if !resetAt.IsZero() && resetAt.After(now.Add(MinRateLimitResetWindow)) {
-		return c.CooldownSessionUntil(sessionKey, resetAt)
+		return c.setSessionCooldownUntil(sessionKey, resetAt, CooldownSourceOfficial)
 	}
-	return c.CooldownSessionUntil(sessionKey, now.Add(SessionRateLimitCooldown))
+	return c.setSessionCooldownUntil(sessionKey, now.Add(SessionRateLimitCooldown), CooldownSourceFallback)
 }
 
 func (c *Config) ClearSessionCooldown(sessionKey string) {
@@ -177,9 +197,15 @@ func (c *Config) ClearSessionCooldown(sessionKey string) {
 
 	c.ensureRuntimeStateLocked()
 	delete(c.SessionCooldownUntil, sessionKey)
+	delete(c.SessionCooldownSource, sessionKey)
 }
 
 func (c *Config) GetSessionCooldownByIndex(idx int, now time.Time) (time.Time, bool) {
+	cooldownUntil, _, coolingDown := c.GetSessionCooldownInfoByIndex(idx, now)
+	return cooldownUntil, coolingDown
+}
+
+func (c *Config) GetSessionCooldownInfoByIndex(idx int, now time.Time) (time.Time, string, bool) {
 	if now.IsZero() {
 		now = time.Now()
 	}
@@ -188,20 +214,25 @@ func (c *Config) GetSessionCooldownByIndex(idx int, now time.Time) (time.Time, b
 	defer c.RwMutx.Unlock()
 
 	if len(c.Sessions) == 0 || idx < 0 || idx >= len(c.Sessions) {
-		return time.Time{}, false
+		return time.Time{}, "", false
 	}
 	c.ensureRuntimeStateLocked()
 
 	sessionKey := c.Sessions[idx].SessionKey
 	cooldownUntil, exists := c.SessionCooldownUntil[sessionKey]
 	if !exists {
-		return time.Time{}, false
+		return time.Time{}, "", false
 	}
 	if !cooldownUntil.After(now) {
 		delete(c.SessionCooldownUntil, sessionKey)
-		return time.Time{}, false
+		delete(c.SessionCooldownSource, sessionKey)
+		return time.Time{}, "", false
 	}
-	return cooldownUntil, true
+	source := c.SessionCooldownSource[sessionKey]
+	if source == "" {
+		source = CooldownSourceFallback
+	}
+	return cooldownUntil, source, true
 }
 
 func (c *Config) SetSessionOrgID(sessionKey, orgID string) {
