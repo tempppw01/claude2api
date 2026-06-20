@@ -121,7 +121,7 @@ func ChatCompletionsHandler(c *gin.Context) {
 			continue
 		}
 
-		logger.Info(fmt.Sprintf("Using session for model %s (requested: %s): %s", model, selectedModel.RequestedModel, session.SessionKey))
+		logger.Info(fmt.Sprintf("Using session for model %s (requested: %s): %s", model, selectedModel.RequestedModel, maskSessionKey(session.SessionKey)))
 		if attemptedSessions > 1 {
 			processor.Prompt.Reset()
 			processor.Prompt.WriteString(processor.RootPrompt.String())
@@ -478,7 +478,7 @@ func cleanupConversation(client *core.Client, conversationID string, retry int) 
 		return // 成功后直接返回，不执行后面的错误日志
 	}
 	// 只有当所有重试都失败后，才会执行到这里
-	logger.Error(fmt.Sprintf("Cleanup %s conversation %s failed after %d retries", client.SessionKey, conversationID, retry))
+	logger.Error(fmt.Sprintf("Cleanup %s conversation %s failed after %d retries", maskSessionKey(client.SessionKey), conversationID, retry))
 }
 
 // logRequest logs the request to the global request logger

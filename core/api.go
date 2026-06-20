@@ -566,11 +566,11 @@ func (c *Client) CreateConversation() (string, error) {
 	if err := json.Unmarshal(resp.Bytes(), &result); err != nil {
 		return "", fmt.Errorf("failed to parse response: %w", err)
 	}
-	logger.Info(fmt.Sprintf("create conversation response: %s", resp.String()))
 	uuid, ok := result["uuid"].(string)
 	if !ok {
 		return "", errors.New("conversation UUID not found in response")
 	}
+	logger.Info(fmt.Sprintf("Created Claude conversation: %s", uuid))
 	return uuid, nil
 }
 
@@ -657,25 +657,28 @@ func parseRateLimitReset(resp *req.Response) (time.Time, string) {
 	// Try standard Retry-After header (seconds or date)
 	if retryAfter := resp.Header.Get("Retry-After"); retryAfter != "" {
 		if resetAt, ok := parseRateLimitResetValue(retryAfter, now, true); ok {
-			return resetAt, formatRateLimitResetAt(resetAt)
+			if isUsableRateLimitReset(resetAt, now) {
+				return resetAt, formatRateLimitResetAt(resetAt)
+			}
 		}
-		return time.Time{}, retryAfter
 	}
 
 	// Try x-ratelimit-reset header
 	if reset := resp.Header.Get("x-ratelimit-reset"); reset != "" {
 		if resetAt, ok := parseRateLimitResetValue(reset, now, false); ok {
-			return resetAt, formatRateLimitResetAt(resetAt)
+			if isUsableRateLimitReset(resetAt, now) {
+				return resetAt, formatRateLimitResetAt(resetAt)
+			}
 		}
-		return time.Time{}, reset
 	}
 
 	// Try other common rate limit headers
 	if reset := resp.Header.Get("X-RateLimit-Reset"); reset != "" {
 		if resetAt, ok := parseRateLimitResetValue(reset, now, false); ok {
-			return resetAt, formatRateLimitResetAt(resetAt)
+			if isUsableRateLimitReset(resetAt, now) {
+				return resetAt, formatRateLimitResetAt(resetAt)
+			}
 		}
-		return time.Time{}, reset
 	}
 
 	// Try to parse from response body
@@ -685,22 +688,31 @@ func parseRateLimitReset(resp *req.Response) (time.Time, string) {
 		if err == nil && len(bodyBytes) > 0 {
 			var body map[string]interface{}
 			if json.Unmarshal(bodyBytes, &body) == nil {
-				if resetAt, raw, ok := findRateLimitResetInJSON(body, now); ok {
-					if !resetAt.IsZero() {
+				if resetAt, _, ok := findRateLimitResetInJSON(body, now); ok {
+					if isUsableRateLimitReset(resetAt, now) {
 						return resetAt, formatRateLimitResetAt(resetAt)
 					}
-					return time.Time{}, raw
+					logger.Info("Ignoring unusable rate limit reset candidate from response JSON")
 				}
 			}
 			bodyText := string(bodyBytes)
 			if resetAt, ok := parseRateLimitResetValue(bodyText, now, false); ok {
-				return resetAt, formatRateLimitResetAt(resetAt)
+				if isUsableRateLimitReset(resetAt, now) {
+					return resetAt, formatRateLimitResetAt(resetAt)
+				}
+				logger.Info("Ignoring unusable rate limit reset candidate from response text")
 			}
-			return time.Time{}, bodyText
 		}
 	}
 
 	return time.Time{}, ""
+}
+
+func isUsableRateLimitReset(resetAt time.Time, now time.Time) bool {
+	if resetAt.IsZero() {
+		return false
+	}
+	return resetAt.After(now.Add(config.MinRateLimitResetWindow))
 }
 
 func formatRateLimitResetAt(resetAt time.Time) string {

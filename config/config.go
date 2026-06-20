@@ -64,7 +64,7 @@ type Config struct {
 
 const (
 	DefaultRequestLogRetention = 1000
-	SessionRateLimitCooldown   = 5 * time.Hour
+	SessionRateLimitCooldown   = 6 * time.Minute
 	MinRateLimitResetWindow    = 30 * time.Second
 	CooldownSourceOfficial     = "official"
 	CooldownSourceFallback     = "fallback"
@@ -77,6 +77,20 @@ func NormalizeRequestLogRetention(value int) int {
 	default:
 		return DefaultRequestLogRetention
 	}
+}
+
+func MaskSecret(value string) string {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return ""
+	}
+	if len(value) <= 8 {
+		return "****"
+	}
+	if len(value) <= 20 {
+		return value[:4] + "..." + value[len(value)-4:]
+	}
+	return value[:10] + "..." + value[len(value)-5:]
 }
 
 // 解析 SESSION 格式的环境变量
@@ -240,7 +254,7 @@ func (c *Config) SetSessionOrgID(sessionKey, orgID string) {
 	defer c.RwMutx.Unlock()
 	for i, session := range c.Sessions {
 		if session.SessionKey == sessionKey {
-			logger.Info(fmt.Sprintf("Setting OrgID for session %s to %s", sessionKey, orgID))
+			logger.Info(fmt.Sprintf("Setting OrgID for session %s to %s", MaskSecret(sessionKey), MaskSecret(orgID)))
 			c.Sessions[i].OrgID = orgID
 			return
 		}
@@ -509,10 +523,10 @@ func init() {
 	logger.Info("Loaded config:")
 	logger.Info(fmt.Sprintf("Max Retry count: %d", ConfigInstance.RetryCount))
 	for _, session := range ConfigInstance.Sessions {
-		logger.Info(fmt.Sprintf("Session: %s, OrgID: %s", session.SessionKey, session.OrgID))
+		logger.Info(fmt.Sprintf("Session: %s, OrgID: %s", MaskSecret(session.SessionKey), MaskSecret(session.OrgID)))
 	}
 	logger.Info(fmt.Sprintf("Address: %s", ConfigInstance.Address))
-	logger.Info(fmt.Sprintf("APIKey: %s", ConfigInstance.APIKey))
+	logger.Info(fmt.Sprintf("APIKey: %s", MaskSecret(ConfigInstance.APIKey)))
 	logger.Info(fmt.Sprintf("Proxy: %s", ConfigInstance.Proxy))
 	logger.Info(fmt.Sprintf("ChatDelete: %t", ConfigInstance.ChatDelete))
 	logger.Info(fmt.Sprintf("MaxChatHistoryLength: %d", ConfigInstance.MaxChatHistoryLength))

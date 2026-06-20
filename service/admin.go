@@ -140,6 +140,13 @@ func AdminLogoutHandler(c *gin.Context) {
 
 // maskSessionKey masks the session key for display
 func maskSessionKey(key string) string {
+	key = strings.TrimSpace(key)
+	if key == "" {
+		return ""
+	}
+	if len(key) <= 8 {
+		return "****"
+	}
 	if len(key) <= 20 {
 		return key[:5] + "..." + key[len(key)-3:]
 	}

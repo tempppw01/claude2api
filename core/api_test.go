@@ -1,6 +1,7 @@
 package core
 
 import (
+	"claude2api/config"
 	"strings"
 	"testing"
 	"time"
@@ -75,5 +76,19 @@ func TestFormatRateLimitResetAtUsesChinaTime(t *testing.T) {
 	want := "2026-06-19 20:07:34 中国时间"
 	if got != want {
 		t.Fatalf("expected %q, got %q", want, got)
+	}
+}
+
+func TestIsUsableRateLimitResetRejectsCurrentOrTooCloseTime(t *testing.T) {
+	now := time.Date(2026, 6, 20, 21, 45, 57, 0, time.Local)
+
+	if isUsableRateLimitReset(now, now) {
+		t.Fatal("expected current request time to be unusable")
+	}
+	if isUsableRateLimitReset(now.Add(config.MinRateLimitResetWindow), now) {
+		t.Fatal("expected reset exactly at minimum window to be unusable")
+	}
+	if !isUsableRateLimitReset(now.Add(config.MinRateLimitResetWindow+time.Second), now) {
+		t.Fatal("expected future reset beyond minimum window to be usable")
 	}
 }
