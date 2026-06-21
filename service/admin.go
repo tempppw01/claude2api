@@ -18,6 +18,8 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+const AppVersion = "v1.0.0"
+
 // AdminStatusHandler handles the admin status endpoint
 func AdminStatusHandler(c *gin.Context) {
 	// Get model list
@@ -86,6 +88,7 @@ func AdminStatusHandler(c *gin.Context) {
 	// Build response
 	response := gin.H{
 		"status":        "ok",
+		"version":       AppVersion,
 		"session_count": len(config.ConfigInstance.Sessions),
 		"sessions":      sessions,
 		"models":        models,

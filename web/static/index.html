@@ -105,6 +105,19 @@
             font-size: 0.86rem;
         }
 
+        .app-version-badge {
+            display: inline-flex;
+            align-items: center;
+            min-height: 36px;
+            padding: 8px 14px;
+            border-radius: 999px;
+            background: rgba(255,255,255,0.1);
+            color: var(--text-main);
+            font-size: 0.88rem;
+            font-weight: 800;
+            letter-spacing: 0.01em;
+        }
+
         .app-shell {
             display: flex;
             min-height: 100vh;
@@ -1409,6 +1422,414 @@
             color: var(--text-sub);
         }
 
+        #section-sessions {
+            --session-bg: #f7f6f3;
+            --session-card: #ffffff;
+            --session-text: #161616;
+            --session-muted: #8a8a8a;
+            --session-line: #eceae5;
+            --session-green: #20a861;
+            --session-orange: #f05a1a;
+            --session-red: #dc2f3a;
+            --session-blue: #2f6fed;
+            --session-violet: #7c3ff2;
+            --session-amber: #bf6a2c;
+        }
+
+        .session-dashboard {
+            min-height: 72vh;
+            padding: 28px;
+            border-radius: 26px;
+            background: var(--session-bg);
+            color: var(--session-text);
+            box-shadow: 0 24px 60px rgba(0,0,0,0.18);
+        }
+
+        .session-page-head,
+        .session-list-head,
+        .session-table-toolbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 18px;
+            flex-wrap: wrap;
+        }
+
+        .session-page-head h2 {
+            margin: 0;
+            color: var(--session-text);
+            font-size: 2rem;
+            line-height: 1.15;
+        }
+
+        .session-page-head p {
+            margin-top: 8px;
+            color: var(--session-muted);
+            font-size: 1rem;
+            font-weight: 600;
+        }
+
+        .session-head-actions,
+        .session-list-tools {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .session-soft-btn,
+        .session-primary-btn,
+        .session-icon-btn,
+        .session-inline-panel summary {
+            min-height: 42px;
+            border-radius: 999px;
+            border: 1px solid var(--session-line);
+            padding: 10px 18px;
+            background: #fff;
+            color: #404040;
+            font-size: 0.94rem;
+            font-weight: 800;
+            cursor: pointer;
+            box-shadow: 0 4px 14px rgba(0,0,0,0.04);
+            transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+        }
+
+        .session-soft-btn:hover,
+        .session-primary-btn:hover,
+        .session-icon-btn:hover,
+        .session-inline-panel summary:hover {
+            transform: translateY(-1px);
+            border-color: #dedbd3;
+            box-shadow: 0 8px 22px rgba(0,0,0,0.08);
+        }
+
+        .session-primary-btn {
+            border-color: #111;
+            background: #111;
+            color: #fff;
+        }
+
+        .session-primary-btn:disabled,
+        .session-soft-btn:disabled,
+        .session-icon-btn:disabled {
+            opacity: 0.58;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .session-overview-title {
+            margin: 34px 0 16px;
+            color: var(--session-text);
+            font-size: 1.06rem;
+            font-weight: 900;
+        }
+
+        .session-overview-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(160px, 1fr));
+            gap: 14px;
+        }
+
+        .session-stat-card {
+            min-height: 112px;
+            padding: 20px;
+            border-radius: 16px;
+            background: var(--session-card);
+            border: 1px solid rgba(255,255,255,0.8);
+        }
+
+        .session-stat-card span {
+            display: block;
+            color: #9a9a9a;
+            font-size: 0.9rem;
+            font-weight: 800;
+        }
+
+        .session-stat-card strong {
+            display: block;
+            margin-top: 24px;
+            color: #101010;
+            font-size: 2rem;
+            line-height: 1;
+        }
+
+        .session-stat-card.good strong { color: var(--session-green); }
+        .session-stat-card.warning strong { color: var(--session-orange); }
+        .session-stat-card.danger strong { color: var(--session-red); }
+        .session-stat-card.blue strong { color: var(--session-blue); }
+        .session-stat-card.violet strong { color: var(--session-violet); }
+        .session-stat-card.amber strong { color: var(--session-amber); }
+
+        .session-list-head {
+            margin-top: 34px;
+        }
+
+        .session-list-title {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            color: var(--session-text);
+            font-size: 1.1rem;
+            font-weight: 900;
+        }
+
+        .session-list-title strong,
+        .session-page-size {
+            display: inline-flex;
+            align-items: center;
+            min-height: 32px;
+            padding: 5px 12px;
+            border-radius: 999px;
+            background: #eeeae2;
+            color: #77726a;
+            font-size: 0.88rem;
+            font-weight: 900;
+        }
+
+        .session-inline-panel {
+            position: relative;
+        }
+
+        .session-inline-panel summary {
+            list-style: none;
+        }
+
+        .session-inline-panel summary::-webkit-details-marker {
+            display: none;
+        }
+
+        .session-form-popover {
+            position: absolute;
+            right: 0;
+            top: calc(100% + 10px);
+            z-index: 6;
+            display: grid;
+            gap: 12px;
+            width: min(620px, calc(100vw - 80px));
+            padding: 18px;
+            border: 1px solid var(--session-line);
+            border-radius: 18px;
+            background: #fff;
+            box-shadow: 0 22px 50px rgba(0,0,0,0.16);
+        }
+
+        .session-form-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px;
+        }
+
+        #section-sessions .field label {
+            color: #535353;
+            font-size: 0.84rem;
+            font-weight: 900;
+        }
+
+        #section-sessions .field input,
+        #section-sessions .field textarea {
+            background: #f8f7f4;
+            border-color: #e7e3dc;
+            color: #222;
+        }
+
+        .session-table-toolbar {
+            margin: 18px 0 12px;
+            justify-content: flex-end;
+        }
+
+        #section-sessions .session-pagination {
+            margin: 0;
+        }
+
+        #section-sessions .page-size-btn {
+            border-color: transparent;
+            background: transparent;
+            color: #9b9b9b;
+            font-size: 0.92rem;
+        }
+
+        #section-sessions .page-size-btn:hover {
+            color: #111;
+            background: #eeeae2;
+        }
+
+        #section-sessions .page-info {
+            color: #777;
+            font-weight: 900;
+        }
+
+        .session-table-wrap {
+            overflow-x: auto;
+            border-radius: 18px;
+            background: #fff;
+            border: 1px solid rgba(0,0,0,0.03);
+        }
+
+        .session-table {
+            min-width: 1180px;
+            color: #333;
+        }
+
+        .session-table th,
+        .session-table td {
+            padding: 13px 16px;
+            border-bottom: 1px solid #f0eee9;
+            vertical-align: middle;
+        }
+
+        .session-table th {
+            background: #fff;
+            color: #aaa;
+            font-size: 0.82rem;
+            letter-spacing: 0;
+            text-transform: none;
+        }
+
+        .session-table tbody tr {
+            transition: background 0.18s ease;
+        }
+
+        .session-table tbody tr:hover {
+            background: #fbfaf7;
+        }
+
+        .session-checkbox {
+            display: inline-block;
+            width: 18px;
+            height: 18px;
+            border: 1.5px solid #aaa;
+            border-radius: 5px;
+        }
+
+        .session-token-cell {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-width: 220px;
+        }
+
+        .session-token-cell code {
+            max-width: 180px;
+            color: #454545;
+            font-size: 0.94rem;
+            font-weight: 800;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .session-copy-dot {
+            color: #aaa;
+            font-size: 0.9rem;
+        }
+
+        .session-type-pill,
+        .session-state-pill,
+        .session-quota-pill {
+            display: inline-flex;
+            align-items: center;
+            min-height: 26px;
+            padding: 5px 12px;
+            border-radius: 999px;
+            background: #f4f4f2;
+            color: #777;
+            font-weight: 900;
+            white-space: nowrap;
+        }
+
+        .session-state-pill.ready {
+            background: #eaf8f0;
+            color: var(--session-green);
+        }
+
+        .session-state-pill.cooling {
+            background: #fff0e9;
+            color: var(--session-orange);
+        }
+
+        .session-state-pill.error {
+            background: #fdebed;
+            color: var(--session-red);
+        }
+
+        .session-quota-row {
+            display: inline-flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            min-width: 220px;
+        }
+
+        .session-quota-pill.fast {
+            background: #eaf8f0;
+            color: var(--session-green);
+        }
+
+        .session-quota-pill.expert {
+            background: #f2ebff;
+            color: var(--session-violet);
+        }
+
+        .session-quota-pill.heavy {
+            background: #fff0e9;
+            color: var(--session-amber);
+        }
+
+        .session-table-number {
+            color: #929292;
+            font-weight: 900;
+            white-space: nowrap;
+        }
+
+        .session-table-number.good {
+            color: var(--session-green);
+        }
+
+        .session-recent-cell {
+            color: #999;
+            font-weight: 800;
+            white-space: nowrap;
+        }
+
+        .session-row-actions {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            white-space: nowrap;
+        }
+
+        .session-action-btn {
+            width: 30px;
+            height: 30px;
+            display: inline-grid;
+            place-items: center;
+            border: none;
+            border-radius: 999px;
+            background: transparent;
+            color: #999;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: color 0.18s ease, background 0.18s ease, transform 0.18s ease;
+        }
+
+        .session-action-btn:hover {
+            transform: translateY(-1px);
+            background: #f4f2ee;
+            color: #111;
+        }
+
+        .session-action-btn.danger:hover {
+            color: var(--session-red);
+        }
+
+        .session-action-btn.warning:hover {
+            color: var(--session-orange);
+        }
+
+        #section-sessions .empty-state {
+            color: #999;
+            background: transparent;
+        }
+
         .error-type-badge {
             display: inline-block;
             padding: 4px 8px;
@@ -1641,6 +2062,56 @@
                 grid-template-columns: 1fr;
             }
 
+            .session-dashboard {
+                padding: 18px;
+                border-radius: 18px;
+            }
+
+            .session-page-head,
+            .session-list-head,
+            .session-table-toolbar {
+                align-items: stretch;
+            }
+
+            .session-head-actions,
+            .session-list-tools {
+                width: 100%;
+            }
+
+            .session-head-actions > *,
+            .session-list-tools > * {
+                flex: 1;
+                text-align: center;
+            }
+
+            .session-overview-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            .session-stat-card {
+                min-height: 96px;
+                padding: 16px;
+            }
+
+            .session-stat-card strong {
+                margin-top: 16px;
+                font-size: 1.6rem;
+            }
+
+            .session-form-popover {
+                position: fixed;
+                left: 18px;
+                right: 18px;
+                top: 96px;
+                width: auto;
+                max-height: calc(100vh - 132px);
+                overflow: auto;
+            }
+
+            .session-form-grid {
+                grid-template-columns: 1fr;
+            }
+
             .session-card-top {
                 flex-direction: column;
             }
@@ -1690,7 +2161,7 @@
                 </button>
                 <button class="nav-item" data-section="sessions" onclick="showSection('sessions')">
                     <span class="nav-icon">🔐</span>
-                    <span>Session 管理</span>
+                    <span>Key 管理</span>
                 </button>
                 <button class="nav-item" data-section="stats" onclick="showSection('stats')">
                     <span class="nav-icon">📈</span>
@@ -1707,6 +2178,7 @@
                         <p id="pageDescription">查看服务状态、模型列表与接口概览。</p>
                     </div>
                     <div class="topbar-actions">
+                        <span class="app-version-badge" id="appVersionBadge">v-</span>
                         <span class="auth-badge">🔒 管理页已登录</span>
                         <button class="btn btn-secondary" onclick="logoutAdmin()">退出登录</button>
                         <button class="drawer-toggle" onclick="toggleDrawer(true)">☰ 菜单</button>
@@ -2032,89 +2504,140 @@
                 </section>
 
                 <section class="section" id="section-sessions">
-                    <div class="card card-full">
-                        <div class="card-header">
-                            <div class="card-header-left">
-                                <div class="card-icon sessions">🔐</div>
-                                <div class="card-title">Session 管理</div>
+                    <div class="session-dashboard">
+                        <div class="session-page-head">
+                            <div>
+                                <h2>账户管理</h2>
+                                <p>统一管理 Claude2API 的 Session 池、运行状态、限流冷却与调用质量。</p>
                             </div>
-                            <div style="display:flex; gap:8px; flex-wrap:wrap;">
-                                <button class="btn btn-secondary" id="sessionRefreshBtn" onclick="refreshSessions()">刷新</button>
-                                <button class="btn btn-success" id="batchTestPageBtn" onclick="batchTestSessions('page', this)">测活本页</button>
-                                <button class="btn btn-warning" id="batchTestAllBtn" onclick="batchTestSessions('all', this)">测活全部</button>
-                                <button class="btn btn-secondary" onclick="exportSessions('csv')">导出 CSV</button>
-                                <button class="btn btn-secondary" onclick="exportSessions('txt')">导出 TXT</button>
+                            <div class="session-head-actions">
+                                <button class="session-soft-btn" id="sessionRefreshBtn" onclick="refreshSessions()">刷新</button>
+                                <button class="session-soft-btn" id="batchTestPageBtn" onclick="batchTestSessions('page', this)">测活本页</button>
+                                <button class="session-primary-btn" id="batchTestAllBtn" onclick="batchTestSessions('all', this)">测活全部</button>
                             </div>
                         </div>
 
-                        <div class="pagination session-pagination" id="sessionPagination" style="display:none;">
-                            <button class="page-size-btn" type="button" onclick="setSessionPage(sessionCurrentPage - 1)">上一页</button>
-                            <span class="page-info session-page-summary" id="sessionPageInfo">第 1 / 1 页</span>
-                            <button class="page-size-btn" type="button" onclick="setSessionPage(sessionCurrentPage + 1)">下一页</button>
-                        </div>
-
-                        <div class="session-shell">
-                            <div class="session-hero">
-                                <div class="session-hero-main">
-                                    <div class="session-hero-title">会话池状态</div>
-                                    <div class="session-hero-desc">实时状态、冷却窗口与最近可用性。</div>
-                                </div>
-                                <div class="session-hero-stat">
-                                    <span>总数</span>
-                                    <strong id="sessionHeroTotal">-</strong>
-                                </div>
-                                <div class="session-hero-stat">
-                                    <span>可用</span>
-                                    <strong id="sessionHeroReady">-</strong>
-                                </div>
-                                <div class="session-hero-stat">
-                                    <span>冷却中</span>
-                                    <strong id="sessionHeroCooling">-</strong>
-                                </div>
+                        <div class="session-overview-title">概览</div>
+                        <div class="session-overview-grid">
+                            <div class="session-stat-card">
+                                <span>账户总数</span>
+                                <strong id="sessionHeroTotal">-</strong>
                             </div>
-                            <div class="session-list" id="sessionTableBody">
-                                <div class="empty-state">加载中...</div>
+                            <div class="session-stat-card good">
+                                <span>正常账户</span>
+                                <strong id="sessionHeroReady">-</strong>
                             </div>
-                        </div>
-
-                        <div class="form-grid" style="margin-top:16px;">
-                            <div class="field" style="grid-column:1 / -1;">
-                                <label for="bulkSessionKeys">批量导入 Session Key</label>
-                                <textarea id="bulkSessionKeys" rows="5" placeholder="每行一个 sk-ant-sid...；也支持 key:orgID 或 key|orgID|cf_clearance|cookie"></textarea>
+                            <div class="session-stat-card warning">
+                                <span>限流账户</span>
+                                <strong id="sessionHeroCooling">-</strong>
                             </div>
-                            <div class="field">
-                                <label for="bulkCfClearance">批量 cf_clearance</label>
-                                <input type="text" id="bulkCfClearance" placeholder="可选，应用到未单独填写的 key">
+                            <div class="session-stat-card danger">
+                                <span>异常账户</span>
+                                <strong id="sessionHeroError">-</strong>
                             </div>
-                            <div class="field">
-                                <label for="bulkCookieString">批量 Cookie 串</label>
-                                <input type="text" id="bulkCookieString" placeholder="可选，应用到未单独填写的 key">
+                            <div class="session-stat-card">
+                                <span>调用总数</span>
+                                <strong id="sessionHeroRequests">-</strong>
                             </div>
-                            <div class="field" style="justify-content:flex-end;">
-                                <button class="btn btn-primary" id="bulkImportBtn" onclick="importSessions()">导入 Key</button>
+                            <div class="session-stat-card blue">
+                                <span>Token 总量</span>
+                                <strong id="sessionHeroTokens">-</strong>
+                            </div>
+                            <div class="session-stat-card violet">
+                                <span>成功率</span>
+                                <strong id="sessionHeroSuccessRate">-</strong>
+                            </div>
+                            <div class="session-stat-card amber">
+                                <span>平均几次后限流</span>
+                                <strong id="sessionHeroLimitCycle">-</strong>
                             </div>
                         </div>
 
-                        <div class="form-grid" style="margin-top:16px;">
-                            <div class="field">
-                                <label for="newSessionKey">新的 Session Key</label>
-                                <input type="text" id="newSessionKey" placeholder="输入新的 Session Key (sk-ant-sid...)">
+                        <div class="session-list-head">
+                            <div class="session-list-title">
+                                <span>账户列表</span>
+                                <strong id="sessionListCount">0</strong>
                             </div>
-                            <div class="field">
-                                <label for="newOrgId">Org ID</label>
-                                <input type="text" id="newOrgId" placeholder="Org ID (可选)">
-                            </div>
-                            <div class="field">
-                                <label for="newCfClearance">cf_clearance</label>
-                                <input type="text" id="newCfClearance" placeholder="Cloudflare 通行 Cookie（可选）">
-                            </div>
-                            <div class="field">
-                                <label for="newCookieString">原始 Cookie 串</label>
-                                <input type="text" id="newCookieString" placeholder="name=value; name2=value2（可选）">
+                            <div class="session-list-tools">
+                                <button class="session-icon-btn" type="button" title="导出 CSV" onclick="exportSessions('csv')">CSV</button>
+                                <button class="session-icon-btn" type="button" title="导出 TXT" onclick="exportSessions('txt')">TXT</button>
+                                <details class="session-inline-panel">
+                                    <summary>导入</summary>
+                                    <div class="session-form-popover">
+                                        <div class="field">
+                                            <label for="bulkSessionKeys">批量导入 Session Key</label>
+                                            <textarea id="bulkSessionKeys" rows="5" placeholder="每行一个 sk-ant-sid...；也支持 key:orgID 或 key|orgID|cf_clearance|cookie"></textarea>
+                                        </div>
+                                        <div class="session-form-grid">
+                                            <div class="field">
+                                                <label for="bulkCfClearance">批量 cf_clearance</label>
+                                                <input type="text" id="bulkCfClearance" placeholder="可选，应用到未单独填写的 key">
+                                            </div>
+                                            <div class="field">
+                                                <label for="bulkCookieString">批量 Cookie 串</label>
+                                                <input type="text" id="bulkCookieString" placeholder="可选，应用到未单独填写的 key">
+                                            </div>
+                                        </div>
+                                        <button class="session-primary-btn" id="bulkImportBtn" onclick="importSessions()">导入 Key</button>
+                                    </div>
+                                </details>
+                                <details class="session-inline-panel">
+                                    <summary>新增</summary>
+                                    <div class="session-form-popover">
+                                        <div class="field">
+                                            <label for="newSessionKey">新的 Session Key</label>
+                                            <input type="text" id="newSessionKey" placeholder="输入新的 Session Key (sk-ant-sid...)">
+                                        </div>
+                                        <div class="session-form-grid">
+                                            <div class="field">
+                                                <label for="newOrgId">Org ID</label>
+                                                <input type="text" id="newOrgId" placeholder="Org ID (可选)">
+                                            </div>
+                                            <div class="field">
+                                                <label for="newCfClearance">cf_clearance</label>
+                                                <input type="text" id="newCfClearance" placeholder="Cloudflare 通行 Cookie（可选）">
+                                            </div>
+                                        </div>
+                                        <div class="field">
+                                            <label for="newCookieString">原始 Cookie 串</label>
+                                            <input type="text" id="newCookieString" placeholder="name=value; name2=value2（可选）">
+                                        </div>
+                                        <button class="session-primary-btn" onclick="addSession()">添加 Session</button>
+                                    </div>
+                                </details>
                             </div>
                         </div>
 
-                        <button class="btn btn-primary" style="margin-top:16px;" onclick="addSession()">添加 Session</button>
+                        <div class="session-table-toolbar">
+                            <div class="pagination session-pagination" id="sessionPagination" style="display:none;">
+                                <button class="page-size-btn" type="button" onclick="setSessionPage(sessionCurrentPage - 1)">上一页</button>
+                                <span class="page-info session-page-summary" id="sessionPageInfo">第 1 / 1 页</span>
+                                <button class="page-size-btn" type="button" onclick="setSessionPage(sessionCurrentPage + 1)">下一页</button>
+                            </div>
+                            <span class="session-page-size">24 / 页</span>
+                        </div>
+
+                        <div class="session-table-wrap">
+                            <table class="session-table">
+                                <thead>
+                                    <tr>
+                                        <th><span class="session-checkbox"></span></th>
+                                        <th>TOKEN</th>
+                                        <th>账户类型</th>
+                                        <th>运行状态</th>
+                                        <th>额度信息</th>
+                                        <th>成功</th>
+                                        <th>失败</th>
+                                        <th>成功率</th>
+                                        <th>最近使用</th>
+                                        <th>操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="sessionTableBody">
+                                    <tr><td colspan="10" class="empty-state">加载中...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </section>
 
@@ -2251,8 +2774,8 @@
                 description: '统一维护 Claude2API 的关键运行配置。'
             },
             sessions: {
-                title: 'Session 管理',
-                description: '管理会话池、测试单个 Session 可用性与导出信息。'
+                title: 'Key 管理',
+                description: '管理会话池、批量测活、限流冷却与账户运行状态。'
             },
             stats: {
                 title: '请求统计',
@@ -2431,6 +2954,7 @@
                 const data = await response.json();
 
                 document.getElementById('sessionCount').textContent = data.session_count;
+                updateAppVersion(data.version);
                 renderModels(data.models || []);
 
                 currentConfig = data.config || {};
@@ -2468,6 +2992,13 @@
                 btn.textContent = originalText;
                 btn.disabled = false;
             }
+        }
+
+        function updateAppVersion(version) {
+            const badge = document.getElementById('appVersionBadge');
+            if (!badge) return;
+            const text = String(version || '').trim();
+            badge.textContent = text || 'v-';
         }
 
         function renderModels(models) {
@@ -2937,7 +3468,7 @@
             const container = document.getElementById('sessionTableBody');
             updateSessionOverview();
             if (!sessions.length) {
-                container.innerHTML = '<div class="empty-state">暂无 Session</div>';
+                container.innerHTML = '<tr><td colspan="10" class="empty-state">暂无 Session</td></tr>';
                 updateSessionPagination(0);
                 return;
             }
@@ -2957,59 +3488,53 @@
             container.innerHTML = pageSessions.map((session, pageIndex) => {
                 const visual = getSessionVisualState(session);
                 const capacity = getSessionCapacityMetrics(session);
-                const details = formatSessionDetailRows(session);
                 const sessionIndex = Number.isInteger(session.index) ? session.index : sessions.indexOf(session);
-                const displayIndex = start + pageIndex + 1;
+                const totalRequests = Number(session.total_requests || 0);
+                const failedRequests = Number(session.failed_requests || 0);
+                const successRate = formatSessionSuccessRate(session);
+                const recentUse = session.last_success_at || session.last_error_at || '-';
+                const rowTitle = [
+                    `状态: ${visual.label}`,
+                    `说明: ${visual.compactText || visual.subtitle || '-'}`,
+                    `Org ID: ${session.org_id || '-'}`,
+                    `Cookie: ${session.cookie_preview || '-'}`,
+                    session.last_error ? `最后报错: ${session.last_error}` : ''
+                ].filter(Boolean).join('\n');
                 const cooldownAction = session.cooling_down === true
-                    ? `<button class="btn btn-warning" onclick="clearSessionCooldown(${sessionIndex}, this)">解除冻结</button>`
+                    ? `<button class="session-action-btn warning" title="解除冻结" onclick="clearSessionCooldown(${sessionIndex}, this)">解</button>`
                     : '';
                 return `
-                    <article class="session-card ${visual.className}" style="animation-delay:${Math.min(pageIndex * 45, 280)}ms">
-                        <div class="session-card-top">
-                            <div class="session-identity">
-                                <div class="session-avatar">${displayIndex}</div>
-                                <div>
-                                    <code class="session-key" title="${escapeHtml(session.session_key || '-')}">${escapeHtml(session.session_key || '-')}</code>
-                                    <div class="session-subtitle">${escapeHtml(visual.subtitle)}</div>
-                                </div>
+                    <tr title="${escapeHtml(rowTitle)}" style="animation-delay:${Math.min(pageIndex * 28, 220)}ms">
+                        <td><span class="session-checkbox"></span></td>
+                        <td>
+                            <div class="session-token-cell">
+                                <code title="${escapeHtml(session.session_key || '-')}">${escapeHtml(session.session_key || '-')}</code>
+                                <span class="session-copy-dot">□</span>
                             </div>
-                            <span class="session-status-chip ${visual.className}">${escapeHtml(visual.label)}</span>
-                        </div>
-
-                        <div class="session-compact-line" title="${escapeHtml(visual.compactTitle || visual.freezeHint || '')}">
-                            ${escapeHtml(visual.compactText || visual.freezeHint || '-')}
-                        </div>
-
-                        <div class="session-card-metrics">
-                            <div class="session-mini-metric highlight">
-                                <span>成功</span>
-                                <strong class="metric-good">${escapeHtml(capacity.successText)}</strong>
+                        </td>
+                        <td><span class="session-type-pill">${escapeHtml(session.org_id ? 'Org' : 'Basic')}</span></td>
+                        <td><span class="session-state-pill ${getSessionStateClass(visual)}">${escapeHtml(getSessionStateLabel(visual))}</span></td>
+                        <td>
+                            <div class="session-quota-row">
+                                <span class="session-quota-pill">A:${escapeHtml(capacity.avgTokensText)}</span>
+                                <span class="session-quota-pill fast">F:${escapeHtml(capacity.successText)}</span>
+                                <span class="session-quota-pill expert">E:${escapeHtml(capacity.limitCycleText)}</span>
+                                <span class="session-quota-pill heavy">H:${escapeHtml(capacity.rateLimitText)}</span>
                             </div>
-                            <div class="session-mini-metric highlight">
-                                <span>Token</span>
-                                <strong>${escapeHtml(capacity.totalTokensText)}</strong>
+                        </td>
+                        <td><span class="session-table-number good">${escapeHtml(capacity.successText)}</span></td>
+                        <td><span class="session-table-number">${escapeHtml(formatCompactNumber(failedRequests))}</span></td>
+                        <td><span class="session-table-number ${successRate.className === 'good' ? 'good' : ''}">${escapeHtml(successRate.text)}</span></td>
+                        <td><span class="session-recent-cell">${escapeHtml(formatSessionRecentUse(recentUse))}</span></td>
+                        <td>
+                            <div class="session-row-actions">
+                                <button class="session-action-btn" title="OpenAI 请求测活" onclick="testSession(${sessionIndex}, this)">测</button>
+                                ${cooldownAction}
+                                <button class="session-action-btn" title="总请求 ${totalRequests}" onclick="showSessionDetail(${sessionIndex})">详</button>
+                                <button class="session-action-btn danger" title="删除" onclick="removeSession(${sessionIndex})">删</button>
                             </div>
-                            <div class="session-mini-metric warning">
-                                <span>限流</span>
-                                <strong class="${capacity.rateLimitClass}">${escapeHtml(capacity.rateLimitText)}</strong>
-                            </div>
-                            <div class="session-mini-metric">
-                                <span>${escapeHtml(visual.timeLabel)}</span>
-                                <strong class="mono">${escapeHtml(visual.timeValue)}</strong>
-                            </div>
-                        </div>
-
-                        <details class="session-details">
-                            <summary>技术详情</summary>
-                            <div class="session-detail-grid">${details}</div>
-                        </details>
-
-                        <div class="session-card-actions">
-                            <button class="btn btn-success" onclick="testSession(${sessionIndex}, this)">测试</button>
-                            ${cooldownAction}
-                            <button class="btn btn-danger" onclick="removeSession(${sessionIndex})">删除</button>
-                        </div>
-                    </article>
+                        </td>
+                    </tr>
                 `;
             }).join('');
 
@@ -3020,6 +3545,12 @@
             const totalEl = document.getElementById('sessionHeroTotal');
             const readyEl = document.getElementById('sessionHeroReady');
             const coolingEl = document.getElementById('sessionHeroCooling');
+            const errorEl = document.getElementById('sessionHeroError');
+            const requestsEl = document.getElementById('sessionHeroRequests');
+            const tokensEl = document.getElementById('sessionHeroTokens');
+            const successRateEl = document.getElementById('sessionHeroSuccessRate');
+            const limitCycleEl = document.getElementById('sessionHeroLimitCycle');
+            const listCountEl = document.getElementById('sessionListCount');
             if (!totalEl || !readyEl || !coolingEl) {
                 return;
             }
@@ -3028,9 +3559,24 @@
             const cooling = sessions.filter(session => session.cooling_down === true).length;
             const blocked = sessions.filter(session => !session.cooling_down && hasActiveSessionError(session)).length;
             const ready = Math.max(0, total - cooling - blocked);
+            const totalRequests = sessions.reduce((sum, session) => sum + Number(session.total_requests || 0), 0);
+            const successRequests = sessions.reduce((sum, session) => sum + Number(session.success_requests || 0), 0);
+            const totalTokens = sessions.reduce((sum, session) => sum + Number(session.total_tokens || 0), 0);
+            const limitCycles = sessions
+                .map(session => Number(session.avg_successes_before_rate_limit || 0))
+                .filter(value => value > 0);
+            const averageLimitCycle = limitCycles.length
+                ? limitCycles.reduce((sum, value) => sum + value, 0) / limitCycles.length
+                : 0;
             totalEl.textContent = total;
             readyEl.textContent = ready;
             coolingEl.textContent = cooling;
+            if (errorEl) errorEl.textContent = blocked;
+            if (requestsEl) requestsEl.textContent = formatCompactNumber(totalRequests);
+            if (tokensEl) tokensEl.textContent = formatCompactNumber(totalTokens);
+            if (successRateEl) successRateEl.textContent = totalRequests ? `${((successRequests / totalRequests) * 100).toFixed(1)}%` : '-';
+            if (limitCycleEl) limitCycleEl.textContent = averageLimitCycle ? `≈ ${formatCompactNumber(averageLimitCycle)}` : '-';
+            if (listCountEl) listCountEl.textContent = total;
         }
 
         function getSessionVisualState(session) {
@@ -3247,6 +3793,70 @@
                     <strong>${escapeHtml(String(value || '-'))}</strong>
                 </div>
             `).join('');
+        }
+
+        function getSessionStateClass(visual) {
+            if (String(visual.className || '').includes('cooling')) {
+                return 'cooling';
+            }
+            if (String(visual.className || '').includes('error')) {
+                return 'error';
+            }
+            return 'ready';
+        }
+
+        function getSessionStateLabel(visual) {
+            const state = getSessionStateClass(visual);
+            if (state === 'cooling') {
+                return '限流';
+            }
+            if (state === 'error') {
+                return '异常';
+            }
+            return '正常';
+        }
+
+        function formatSessionRecentUse(value) {
+            const text = String(value || '').trim();
+            if (!text || text === '-') {
+                return '-';
+            }
+            const parts = text.split(' ');
+            if (parts.length >= 2) {
+                return parts[1].slice(0, 5);
+            }
+            return text;
+        }
+
+        function formatSessionDetailText(session) {
+            const totalTokens = Number(session.total_tokens || 0);
+            const inputTokens = Number(session.input_tokens || 0);
+            const outputTokens = Number(session.output_tokens || 0);
+            const rateLimitRequests = Number(session.rate_limit_requests || 0);
+            const avgBeforeLimit = Number(session.avg_successes_before_rate_limit || 0);
+            const cooldownMeta = getCooldownSourceMeta(session);
+            const cooldownUntil = String(session.cooldown_until || '').trim();
+            return [
+                `Token: ${session.session_key || '-'}`,
+                `Org ID: ${session.org_id || '-'}`,
+                `Cookie: ${session.cookie_preview || '-'}`,
+                `冷却: ${session.cooling_down ? `${cooldownMeta.shortLabel} ${cooldownUntil || '-'}` : '-'}`,
+                `最后成功: ${session.last_success_at || '-'}`,
+                `最后报错: ${session.last_error || '-'}`,
+                `报错模型: ${session.last_error_model || '-'}`,
+                `请求: ${Number(session.success_requests || 0)} / ${Number(session.total_requests || 0)} 成功`,
+                `Token: ${formatCompactNumber(totalTokens)} 总量，${formatCompactNumber(inputTokens)} 输入 / ${formatCompactNumber(outputTokens)} 输出`,
+                `限流画像: ${rateLimitRequests > 0 ? `${rateLimitRequests} 次，平均 ${avgBeforeLimit.toFixed(1)} 次成功后限流` : '暂无限流记录'}`
+            ].join('\n');
+        }
+
+        function showSessionDetail(index) {
+            const session = sessions.find(item => item.index === index) || sessions[index];
+            if (!session) {
+                alert('未找到 Session 详情');
+                return;
+            }
+            alert(formatSessionDetailText(session));
         }
 
         function getOrderedSessions() {
@@ -3514,7 +4124,7 @@
         }
 
         async function clearSessionCooldown(index, triggerButton) {
-            const button = triggerButton || document.querySelector(`#sessionTableBody .btn-warning[onclick*="clearSessionCooldown(${index}"]`);
+            const button = triggerButton || document.querySelector(`#sessionTableBody .session-action-btn[onclick*="clearSessionCooldown(${index}"]`);
             const originalText = button ? button.textContent : '';
             if (button) {
                 button.textContent = '解除中...';
@@ -3546,7 +4156,7 @@
         }
 
         async function testSession(index, triggerButton) {
-            const testBtn = triggerButton || document.querySelector(`#sessionTableBody .btn-success[onclick*="testSession(${index}"]`);
+            const testBtn = triggerButton || document.querySelector(`#sessionTableBody .session-action-btn[onclick*="testSession(${index}"]`);
             if (!testBtn) {
                 return;
             }
