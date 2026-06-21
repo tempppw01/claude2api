@@ -25,6 +25,7 @@ func SetupRoutes(r *gin.Engine) {
 
 	// Admin API endpoint
 	r.GET("/admin-api/status", service.AdminStatusHandler)
+	r.POST("/admin-api/chat/completions", service.ChatCompletionsHandler)
 	r.POST("/admin-api/config", service.AdminUpdateConfigHandler)
 	r.POST("/admin-api/session", service.AdminAddSessionHandler)
 	r.POST("/admin-api/sessions/import", service.AdminImportSessionsHandler)

@@ -708,6 +708,349 @@
             transform: translateX(22px);
         }
 
+        #section-config,
+        #section-chat {
+            --page-bg: #f7f6f3;
+            --page-card: #ffffff;
+            --page-text: #151515;
+            --page-muted: #969696;
+            --page-line: #ebe8e2;
+            --page-soft: #f1efeb;
+            --page-green: #20a861;
+            --page-blue: #2f6fed;
+            --page-red: #dc2f3a;
+        }
+
+        .config-dashboard,
+        .chat-dashboard {
+            min-height: 72vh;
+            padding: 28px;
+            border-radius: 26px;
+            background: var(--page-bg);
+            color: var(--page-text);
+            box-shadow: 0 24px 60px rgba(0,0,0,0.18);
+        }
+
+        .config-page-head,
+        .chat-head {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 18px;
+            flex-wrap: wrap;
+            margin-bottom: 26px;
+        }
+
+        .config-page-head h2,
+        .chat-head h2 {
+            margin: 0;
+            color: var(--page-text);
+            font-size: 2rem;
+            line-height: 1.15;
+        }
+
+        .config-page-head p,
+        .chat-head p {
+            margin-top: 8px;
+            color: var(--page-muted);
+            font-size: 1rem;
+            font-weight: 600;
+        }
+
+        .config-page-actions,
+        .chat-controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .config-soft-btn,
+        .config-primary-btn,
+        .chat-soft-btn,
+        .chat-send-btn {
+            min-height: 42px;
+            border-radius: 999px;
+            border: 1px solid var(--page-line);
+            padding: 10px 20px;
+            background: #fff;
+            color: #454545;
+            font-size: 0.95rem;
+            font-weight: 900;
+            cursor: pointer;
+            box-shadow: 0 4px 14px rgba(0,0,0,0.04);
+            transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+        }
+
+        .config-soft-btn:hover,
+        .config-primary-btn:hover,
+        .chat-soft-btn:hover,
+        .chat-send-btn:hover {
+            transform: translateY(-1px);
+            border-color: #dedbd3;
+            box-shadow: 0 8px 22px rgba(0,0,0,0.08);
+        }
+
+        .config-primary-btn,
+        .chat-send-btn {
+            border-color: #111;
+            background: #111;
+            color: #fff;
+        }
+
+        .config-primary-btn:disabled,
+        .chat-send-btn:disabled {
+            opacity: 0.58;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .config-tabs {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 18px;
+            overflow-x: auto;
+            padding-bottom: 2px;
+        }
+
+        .config-tab {
+            min-height: 42px;
+            padding: 9px 20px;
+            border: none;
+            border-radius: 999px;
+            background: #f2f1ef;
+            color: #aaa;
+            font-size: 0.95rem;
+            font-weight: 900;
+            white-space: nowrap;
+            cursor: pointer;
+            transition: background 0.18s ease, color 0.18s ease;
+        }
+
+        .config-tab.active {
+            background: #111;
+            color: #fff;
+        }
+
+        .config-panel {
+            display: none;
+            overflow: hidden;
+            border-radius: 18px;
+            background: #fff;
+            border: 1px solid rgba(0,0,0,0.03);
+        }
+
+        .config-panel.active {
+            display: block;
+        }
+
+        .config-panel + .config-panel {
+            margin-top: 16px;
+        }
+
+        .config-panel-title {
+            padding: 18px 22px 10px;
+            color: #999;
+            font-size: 0.96rem;
+            font-weight: 900;
+        }
+
+        #section-config .config-row {
+            display: grid;
+            grid-template-columns: minmax(260px, 0.9fr) minmax(320px, 1fr);
+            gap: 20px;
+            align-items: center;
+            min-height: 82px;
+            padding: 18px 22px;
+            border: none;
+            border-top: 1px solid #f0eee9;
+            border-radius: 0;
+            background: #fff;
+        }
+
+        #section-config .config-row-wide {
+            grid-template-columns: minmax(260px, 0.42fr) minmax(0, 1fr);
+            align-items: stretch;
+        }
+
+        #section-config .config-label-text {
+            color: #242424;
+            font-size: 1rem;
+            font-weight: 900;
+        }
+
+        #section-config .config-label-desc {
+            margin-top: 6px;
+            color: #aaa;
+            font-size: 0.88rem;
+            line-height: 1.45;
+        }
+
+        #section-config .config-input,
+        .chat-select {
+            min-height: 44px;
+            padding: 10px 14px;
+            border-radius: 12px;
+            border: 1px solid #e6e3dd;
+            background: #fbfaf8;
+            color: #222;
+            font-size: 0.96rem;
+            box-shadow: inset 0 0 0 1px rgba(0,0,0,0.015);
+        }
+
+        #section-config .config-input:focus,
+        .chat-select:focus,
+        .chat-composer textarea:focus {
+            outline: none;
+            border-color: #d4d0c8;
+            box-shadow: 0 0 0 4px rgba(0,0,0,0.04);
+        }
+
+        #section-config .toggle-switch {
+            width: 54px;
+            height: 30px;
+            background: #d7d7d7;
+            justify-self: end;
+        }
+
+        #section-config .toggle-switch::after {
+            width: 24px;
+            height: 24px;
+        }
+
+        #section-config .toggle-switch.active {
+            background: #111;
+        }
+
+        #section-config .toggle-switch.active::after {
+            transform: translateX(24px);
+        }
+
+        #section-config .log-retention-group {
+            margin-left: 0;
+            justify-content: flex-end;
+        }
+
+        #section-config .log-retention-btn {
+            min-height: 36px;
+            border-color: #e6e3dd;
+            background: #fbfaf8;
+            color: #777;
+        }
+
+        #section-config .log-retention-btn.active {
+            border-color: #111;
+            background: #111;
+            color: #fff;
+        }
+
+        .chat-select {
+            min-width: 260px;
+        }
+
+        .chat-stream-toggle {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            min-height: 42px;
+            padding: 9px 16px;
+            border-radius: 999px;
+            background: #fff;
+            color: #555;
+            font-weight: 900;
+        }
+
+        .chat-surface {
+            display: grid;
+            grid-template-rows: minmax(420px, 1fr) auto;
+            min-height: 620px;
+            overflow: hidden;
+            border-radius: 20px;
+            background: #fff;
+            border: 1px solid rgba(0,0,0,0.03);
+        }
+
+        .chat-messages {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            padding: 22px;
+            overflow: auto;
+        }
+
+        .chat-empty {
+            margin: auto;
+            max-width: 520px;
+            display: grid;
+            gap: 8px;
+            text-align: center;
+            color: #aaa;
+        }
+
+        .chat-empty strong {
+            color: #222;
+            font-size: 1.2rem;
+        }
+
+        .chat-message {
+            max-width: min(760px, 88%);
+            padding: 14px 16px;
+            border-radius: 18px;
+            line-height: 1.65;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .chat-message.user {
+            align-self: flex-end;
+            border-bottom-right-radius: 6px;
+            background: #111;
+            color: #fff;
+        }
+
+        .chat-message.assistant {
+            align-self: flex-start;
+            border-bottom-left-radius: 6px;
+            background: #f4f2ee;
+            color: #222;
+        }
+
+        .chat-message.error {
+            align-self: flex-start;
+            background: #fdebed;
+            color: var(--page-red);
+        }
+
+        .chat-message.pending {
+            color: #8b8172;
+            font-style: italic;
+        }
+
+        .chat-composer {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            gap: 12px;
+            padding: 16px;
+            border-top: 1px solid #f0eee9;
+            background: #fbfaf8;
+        }
+
+        .chat-composer textarea {
+            width: 100%;
+            min-height: 76px;
+            max-height: 180px;
+            resize: vertical;
+            padding: 14px;
+            border-radius: 16px;
+            border: 1px solid #e6e3dd;
+            background: #fff;
+            color: #222;
+            font-size: 0.96rem;
+            line-height: 1.5;
+        }
+
+
         #section-config .card {
             padding: 14px 18px;
         }
@@ -781,6 +1124,23 @@
             font-size: 0.84rem;
         }
 
+        #section-config .table-wrap {
+            background: #fff;
+            border: 1px solid #f0eee9;
+            border-radius: 14px;
+        }
+
+        #section-config th {
+            color: #8b8b8b;
+            background: #fbfaf8;
+            border-bottom-color: #f0eee9;
+        }
+
+        #section-config td {
+            color: #2a2a2a;
+            border-bottom-color: #f0eee9;
+        }
+
         .config-model-options,
         .config-model-actions {
             display: flex;
@@ -802,6 +1162,12 @@
         .config-save-btn {
             margin-top: 10px;
             width: 100%;
+            padding-block: 10px;
+        }
+
+        .config-page-actions .config-save-btn {
+            width: auto;
+            margin-top: 0;
             padding-block: 10px;
         }
 
@@ -2119,6 +2485,54 @@
             .session-status-chip {
                 align-self: flex-start;
             }
+
+            .config-dashboard,
+            .chat-dashboard {
+                padding: 18px;
+                border-radius: 18px;
+            }
+
+            .config-page-actions,
+            .chat-controls {
+                width: 100%;
+                align-items: stretch;
+            }
+
+            .config-page-actions > *,
+            .chat-controls > * {
+                flex: 1;
+                text-align: center;
+            }
+
+            #section-config .config-row,
+            #section-config .config-row-wide {
+                grid-template-columns: 1fr;
+                gap: 12px;
+            }
+
+            #section-config .toggle-switch,
+            #section-config .log-retention-group {
+                justify-self: start;
+                justify-content: flex-start;
+            }
+
+            .chat-select {
+                min-width: 0;
+                width: 100%;
+            }
+
+            .chat-surface {
+                min-height: 540px;
+                grid-template-rows: minmax(340px, 1fr) auto;
+            }
+
+            .chat-composer {
+                grid-template-columns: 1fr;
+            }
+
+            .chat-message {
+                max-width: 100%;
+            }
         }
     </style>
 </head>
@@ -2154,6 +2568,10 @@
                 <button class="nav-item" data-section="debug" onclick="showSection('debug')">
                     <span class="nav-icon">🧪</span>
                     <span>调试测试</span>
+                </button>
+                <button class="nav-item" data-section="chat" onclick="showSection('chat')">
+                    <span class="nav-icon">💬</span>
+                    <span>Web 聊天</span>
                 </button>
                 <button class="nav-item" data-section="config" onclick="showSection('config')">
                     <span class="nav-icon">⚙️</span>
@@ -2335,100 +2753,129 @@
                     </div>
                 </section>
 
-                <section class="section" id="section-config">
-                    <div class="card card-full">
-                        <div class="card-header">
-                            <div class="card-header-left">
-                                <div class="card-icon config">⚙️</div>
-                                <div class="card-title">配置管理</div>
+                <section class="section" id="section-chat">
+                    <div class="chat-dashboard">
+                        <div class="chat-head">
+                            <div>
+                                <h2>Web 聊天</h2>
+                                <p>使用当前 Session 池直接进行对话测试，适合快速验证模型、轮询和限流状态。</p>
+                            </div>
+                            <div class="chat-controls">
+                                <select id="chatModel" class="chat-select"></select>
+                                <label class="chat-stream-toggle"><input type="checkbox" id="chatStream" checked> 流式</label>
+                                <button class="chat-soft-btn" type="button" onclick="clearWebChat()">清空</button>
                             </div>
                         </div>
 
-                        <div class="config-section">
-                            <div class="config-row">
-                                <div class="config-label">
-                                    <span class="config-label-text">自动删除对话</span>
-                                    <span class="config-label-desc">请求完成后自动删除 Claude 对话</span>
+                        <div class="chat-surface">
+                            <div class="chat-messages" id="chatMessages">
+                                <div class="chat-empty">
+                                    <strong>开始一次真实的 Web 聊天</strong>
+                                    <span>消息会通过管理页登录态转发到 OpenAI 兼容接口，不需要在浏览器中填写 API Key。</span>
                                 </div>
-                                <div class="toggle-switch" id="toggleChatDelete" onclick="toggleConfig('chat_delete')"></div>
                             </div>
+                            <div class="chat-composer">
+                                <textarea id="chatInput" rows="3" placeholder="输入消息，Enter 发送，Shift + Enter 换行" onkeydown="handleChatInputKeydown(event)"></textarea>
+                                <button class="chat-send-btn" id="chatSendBtn" type="button" onclick="sendWebChatMessage()">发送</button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
 
+                <section class="section" id="section-config">
+                    <div class="config-dashboard">
+                        <div class="config-page-head">
+                            <div>
+                                <h2>配置管理</h2>
+                                <p>管理 Claude2API 系统运行参数、模型映射、网络代理与服务默认行为。</p>
+                            </div>
+                            <div class="config-page-actions">
+                                <button class="config-soft-btn" type="button" onclick="resetConfigForm()">重置</button>
+                                <button class="config-primary-btn config-save-btn" type="button" onclick="saveAllConfig()">保存</button>
+                            </div>
+                        </div>
+
+                        <div class="config-tabs">
+                            <button class="config-tab active" type="button" data-config-tab="system" onclick="showConfigTab('system')">系统配置</button>
+                            <button class="config-tab" type="button" data-config-tab="app" onclick="showConfigTab('app')">应用功能</button>
+                            <button class="config-tab" type="button" data-config-tab="models" onclick="showConfigTab('models')">模型管理</button>
+                            <button class="config-tab" type="button" data-config-tab="network" onclick="showConfigTab('network')">网络代理</button>
+                            <button class="config-tab" type="button" data-config-tab="logs" onclick="showConfigTab('logs')">日志存储</button>
+                        </div>
+
+                        <div class="config-panel active" data-config-panel="system">
+                            <div class="config-panel-title">基础访问控制</div>
                             <div class="config-row">
                                 <div class="config-label">
-                                    <span class="config-label-text">禁用角色前缀</span>
-                                    <span class="config-label-desc">不添加 User/Assistant 前缀</span>
-                                </div>
-                                <div class="toggle-switch" id="toggleNoRolePrefix" onclick="toggleConfig('no_role_prefix')"></div>
-                            </div>
-
-                            <div class="config-row">
-                                <div class="config-label">
-                                    <span class="config-label-text">禁用 Artifacts</span>
-                                    <span class="config-label-desc">在提示词中禁用 Artifacts 功能</span>
-                                </div>
-                                <div class="toggle-switch" id="toggleDisableArtifacts" onclick="toggleConfig('prompt_disable_artifacts')"></div>
-                            </div>
-
-                            <div class="config-row">
-                                <div class="config-label">
-                                    <span class="config-label-text">启用镜像 API</span>
-                                    <span class="config-label-desc">允许通过自定义前缀访问 API</span>
-                                </div>
-                                <div class="toggle-switch" id="toggleMirrorApi" onclick="toggleConfig('enable_mirror_api')"></div>
-                            </div>
-
-                            <div class="config-row">
-                                <div class="config-label">
-                                    <span class="config-label-text">镜像 API 前缀</span>
-                                    <span class="config-label-desc">镜像 API 的 URL 前缀</span>
-                                </div>
-                                <input type="text" class="config-input" id="mirrorApiPrefix" placeholder="/mirror">
-                            </div>
-
-                            <div class="config-row">
-                                <div class="config-label">
-                                    <span class="config-label-text">最大上下文长度</span>
-                                    <span class="config-label-desc">超过此长度将使用文件存储上下文</span>
-                                </div>
-                                <input type="number" class="config-input" id="maxChatHistoryLength" placeholder="10000">
-                            </div>
-
-                            <div class="config-row">
-                                <div class="config-label">
-                                    <span class="config-label-text">内部重试次数</span>
-                                    <span class="config-label-desc">非限流错误时最多换几个 key；限流会停止本次扫描</span>
-                                </div>
-                                <input type="number" min="1" max="10" class="config-input" id="internalRetryCount" placeholder="1">
-                            </div>
-
-                            <div class="config-row">
-                                <div class="config-label">
-                                    <span class="config-label-text">API Key</span>
-                                    <span class="config-label-desc">访问 API 的认证密钥；留空表示不修改</span>
+                                    <span class="config-label-text">API 调用密钥</span>
+                                    <span class="config-label-desc">OpenAI 兼容 API 的鉴权密钥；留空表示不修改。</span>
                                 </div>
                                 <input type="text" class="config-input" id="apiKeyInput" placeholder="输入新的 API Key">
                             </div>
-
-                            <div class="config-row">
-                                <div class="config-label">
-                                    <span class="config-label-text">代理地址</span>
-                                    <span class="config-label-desc">HTTP 代理 URL（可选）</span>
-                                </div>
-                                <input type="text" class="config-input" id="proxyInput" placeholder="http://proxy:8080">
-                            </div>
-
                             <div class="config-row">
                                 <div class="config-label">
                                     <span class="config-label-text">管理页密码</span>
-                                    <span class="config-label-desc">留空表示不修改</span>
+                                    <span class="config-label-desc">修改后已有 Session 将立即失效，需要重新登录。</span>
                                 </div>
                                 <input type="password" class="config-input" id="adminPasswordConfigInput" placeholder="输入新的管理页密码">
                             </div>
+                            <div class="config-row">
+                                <div class="config-label">
+                                    <span class="config-label-text">最大上下文长度</span>
+                                    <span class="config-label-desc">超过此长度将使用文件存储上下文。</span>
+                                </div>
+                                <input type="number" class="config-input" id="maxChatHistoryLength" placeholder="10000">
+                            </div>
+                            <div class="config-row">
+                                <div class="config-label">
+                                    <span class="config-label-text">内部重试次数</span>
+                                    <span class="config-label-desc">非限流错误时最多换几个 key；限流会停止本次扫描。</span>
+                                </div>
+                                <input type="number" min="1" max="10" class="config-input" id="internalRetryCount" placeholder="1">
+                            </div>
+                        </div>
 
+                        <div class="config-panel" data-config-panel="app">
+                            <div class="config-panel-title">应用功能</div>
+                            <div class="config-row">
+                                <div class="config-label">
+                                    <span class="config-label-text">自动删除对话</span>
+                                    <span class="config-label-desc">请求完成后自动删除 Claude 对话。</span>
+                                </div>
+                                <div class="toggle-switch" id="toggleChatDelete" onclick="toggleConfig('chat_delete')"></div>
+                            </div>
+                            <div class="config-row">
+                                <div class="config-label">
+                                    <span class="config-label-text">禁用角色前缀</span>
+                                    <span class="config-label-desc">不添加 User/Assistant 前缀。</span>
+                                </div>
+                                <div class="toggle-switch" id="toggleNoRolePrefix" onclick="toggleConfig('no_role_prefix')"></div>
+                            </div>
+                            <div class="config-row">
+                                <div class="config-label">
+                                    <span class="config-label-text">禁用 Artifacts</span>
+                                    <span class="config-label-desc">在提示词中禁用 Artifacts 功能。</span>
+                                </div>
+                                <div class="toggle-switch" id="toggleDisableArtifacts" onclick="toggleConfig('prompt_disable_artifacts')"></div>
+                            </div>
+                            <div class="config-row">
+                                <div class="config-label">
+                                    <span class="config-label-text">启用镜像 API</span>
+                                    <span class="config-label-desc">允许通过自定义前缀访问 API。</span>
+                                </div>
+                                <div class="toggle-switch" id="toggleMirrorApi" onclick="toggleConfig('enable_mirror_api')"></div>
+                            </div>
+                            <div class="config-row">
+                                <div class="config-label">
+                                    <span class="config-label-text">镜像 API 前缀</span>
+                                    <span class="config-label-desc">镜像 API 的 URL 前缀。</span>
+                                </div>
+                                <input type="text" class="config-input" id="mirrorApiPrefix" placeholder="/mirror">
+                            </div>
                             <div class="config-row config-row-wide">
                                 <div class="config-label">
                                     <span class="config-label-text">全局系统提示词覆盖</span>
-                                    <span class="config-label-desc">可为所有模型统一追加或替换系统提示词；模型级配置优先级更高</span>
+                                    <span class="config-label-desc">可为所有模型统一追加或替换系统提示词；模型级配置优先级更高。</span>
                                 </div>
                                 <div class="field">
                                     <select id="globalPromptOverrideMode" class="config-input">
@@ -2438,11 +2885,14 @@
                                     <textarea id="globalSystemPromptOverride" class="config-input" rows="5" placeholder="输入全局系统提示词覆盖内容"></textarea>
                                 </div>
                             </div>
+                        </div>
 
+                        <div class="config-panel" data-config-panel="models">
+                            <div class="config-panel-title">模型映射与模型管理</div>
                             <div class="config-row config-row-wide">
                                 <div class="config-label">
-                                    <span class="config-label-text">模型映射与模型管理</span>
-                                    <span class="config-label-desc">支持维护对外模型名、真实上游模型 ID、Thinking 能力、可见性、免费或 Pro 分级与模型级提示词覆盖</span>
+                                    <span class="config-label-text">模型定义</span>
+                                    <span class="config-label-desc">维护对外模型名、真实上游模型 ID、Thinking 能力、可见性、分级与模型级提示词覆盖。</span>
                                 </div>
                                 <div class="config-model-panel">
                                     <div class="table-wrap">
@@ -2499,7 +2949,32 @@
                             </div>
                         </div>
 
-                        <button class="btn btn-primary config-save-btn" onclick="saveAllConfig()">保存所有配置</button>
+                        <div class="config-panel" data-config-panel="network">
+                            <div class="config-panel-title">网络代理</div>
+                            <div class="config-row">
+                                <div class="config-label">
+                                    <span class="config-label-text">代理地址</span>
+                                    <span class="config-label-desc">HTTP 代理 URL，可留空关闭代理。</span>
+                                </div>
+                                <input type="text" class="config-input" id="proxyInput" placeholder="http://proxy:8080">
+                            </div>
+                        </div>
+
+                        <div class="config-panel" data-config-panel="logs">
+                            <div class="config-panel-title">日志存储</div>
+                            <div class="config-row">
+                                <div class="config-label">
+                                    <span class="config-label-text">请求日志保留数量</span>
+                                    <span class="config-label-desc">控制管理页请求统计保留条数。</span>
+                                </div>
+                                <div class="log-retention-group" id="configLogRetentionGroup">
+                                    <button class="log-retention-btn" type="button" onclick="setRequestLogRetention(100)" data-retention="100">100</button>
+                                    <button class="log-retention-btn" type="button" onclick="setRequestLogRetention(500)" data-retention="500">500</button>
+                                    <button class="log-retention-btn" type="button" onclick="setRequestLogRetention(1000)" data-retention="1000">1000</button>
+                                    <button class="log-retention-btn" type="button" onclick="setRequestLogRetention(3000)" data-retention="3000">3000</button>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </section>
 
@@ -2759,6 +3234,9 @@
         let autoRefreshTimer = null;
         let sessionClockTimer = null;
         let modelPanelExpanded = false;
+        let webChatMessages = [];
+        let webChatController = null;
+        let activeConfigTab = 'system';
 
         const sectionMeta = {
             overview: {
@@ -2768,6 +3246,10 @@
             debug: {
                 title: '调试测试',
                 description: '直接发送任意文本到 AI 接口，便于后期调试测试。'
+            },
+            chat: {
+                title: 'Web 聊天',
+                description: '通过当前 Session 池进行真实对话测试。'
             },
             config: {
                 title: '配置管理',
@@ -3004,11 +3486,15 @@
         function renderModels(models) {
             const modelList = document.getElementById('modelList');
             const testModelSelect = document.getElementById('testModel');
+            const chatModelSelect = document.getElementById('chatModel');
             const modelSummary = document.getElementById('modelSummary');
 
             if (!models.length) {
                 modelList.innerHTML = '<span style="color:#9aa4b2;">暂无模型</span>';
                 testModelSelect.innerHTML = '<option value="">暂无模型</option>';
+                if (chatModelSelect) {
+                    chatModelSelect.innerHTML = '<option value="">暂无模型</option>';
+                }
                 modelSummary.textContent = '0 个模型';
                 updateModelPanelState();
                 return;
@@ -3016,7 +3502,7 @@
 
             const normalizedModels = models
                 .map(normalizeModelItem)
-                .filter(model => model.id)
+                .filter(model => model.id && model.enabled !== false && model.visible !== false)
                 .sort(compareModelItems);
 
             const freeCount = normalizedModels.filter(model => !model.isPro).length;
@@ -3046,7 +3532,7 @@
                 </div>
             `).join('');
 
-            testModelSelect.innerHTML = normalizedModels.map(model => {
+            const modelOptions = normalizedModels.map(model => {
                 const modelId = model.id;
                 const displayName = model.displayName;
                 const optionLabel = displayName && displayName !== modelId
@@ -3054,6 +3540,11 @@
                     : modelId;
                 return `<option value="${escapeHtml(modelId)}">${escapeHtml(optionLabel)}</option>`;
             }).join('');
+
+            testModelSelect.innerHTML = modelOptions;
+            if (chatModelSelect) {
+                chatModelSelect.innerHTML = modelOptions;
+            }
 
             updateModelPanelState();
         }
@@ -3089,6 +3580,8 @@
             return {
                 id,
                 displayName,
+                enabled: item.enabled !== false,
+                visible: item.visible !== false,
                 isPro,
                 familyRank,
                 baseId,
@@ -3340,7 +3833,7 @@
                 return;
             }
 
-            const buttons = document.querySelectorAll('#logRetentionGroup .log-retention-btn');
+            const buttons = document.querySelectorAll('#logRetentionGroup .log-retention-btn, #configLogRetentionGroup .log-retention-btn');
             buttons.forEach(button => button.disabled = true);
 
             try {
@@ -3368,9 +3861,25 @@
 
         function updateRequestLogRetentionButtons() {
             const retention = Number(currentConfig.request_log_retention || 1000);
-            document.querySelectorAll('#logRetentionGroup .log-retention-btn').forEach(button => {
+            document.querySelectorAll('#logRetentionGroup .log-retention-btn, #configLogRetentionGroup .log-retention-btn').forEach(button => {
                 button.classList.toggle('active', Number(button.dataset.retention) === retention);
             });
+        }
+
+        function showConfigTab(tab) {
+            activeConfigTab = tab || 'system';
+            document.querySelectorAll('#section-config .config-tab').forEach(button => {
+                button.classList.toggle('active', button.dataset.configTab === activeConfigTab);
+            });
+            document.querySelectorAll('#section-config .config-panel').forEach(panel => {
+                panel.classList.toggle('active', panel.dataset.configPanel === activeConfigTab);
+            });
+        }
+
+        function resetConfigForm() {
+            updateConfigUI();
+            renderModelDefinitions();
+            showConfigTab(activeConfigTab);
         }
 
         function updateConfigUI() {
@@ -3388,6 +3897,7 @@
             document.getElementById('globalSystemPromptOverride').value = currentConfig.global_system_prompt_override || '';
             updateRequestLogRetentionButtons();
             resetModelDefinitionForm();
+            showConfigTab(activeConfigTab);
         }
 
         function toggleConfig(key) {
@@ -4243,6 +4753,183 @@
                 window.URL.revokeObjectURL(url);
             } catch (error) {
                 alert('导出失败: ' + error.message);
+            }
+        }
+
+        function handleChatInputKeydown(event) {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                sendWebChatMessage();
+            }
+        }
+
+        function clearWebChat() {
+            if (webChatController) {
+                webChatController.abort();
+                webChatController = null;
+            }
+            webChatMessages = [];
+            renderWebChatMessages();
+        }
+
+        function renderWebChatMessages() {
+            const container = document.getElementById('chatMessages');
+            if (!container) return;
+
+            if (!webChatMessages.length) {
+                container.innerHTML = `
+                    <div class="chat-empty">
+                        <strong>开始一次真实的 Web 聊天</strong>
+                        <span>消息会通过管理页登录态转发到 OpenAI 兼容接口，不需要在浏览器中填写 API Key。</span>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = webChatMessages.map(message => {
+                const roleClass = message.role === 'user' ? 'user' : 'assistant';
+                const stateClass = message.error ? 'error' : (message.pending ? 'pending' : '');
+                const content = message.content || (message.pending ? '正在思考...' : '');
+                return `<div class="chat-message ${roleClass} ${stateClass}">${escapeHtml(content)}</div>`;
+            }).join('');
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function getWebChatRequestMessages() {
+            return webChatMessages
+                .filter(message => !message.error && !message.pending && (message.role === 'user' || message.role === 'assistant'))
+                .map(message => ({
+                    role: message.role,
+                    content: message.content
+                }));
+        }
+
+        function extractChatContent(result) {
+            return result?.choices?.[0]?.message?.content
+                || result?.choices?.[0]?.delta?.content
+                || result?.content
+                || '';
+        }
+
+        async function getResponseErrorMessage(response) {
+            let message = `请求失败: ${response.status} ${response.statusText}`;
+            try {
+                const data = await response.json();
+                if (typeof data.error === 'string') {
+                    message = data.error;
+                } else if (data.error?.message) {
+                    message = data.error.message;
+                } else if (data.message) {
+                    message = data.message;
+                }
+            } catch (_) {}
+            return message;
+        }
+
+        async function readChatStream(response, assistantMessage) {
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let buffer = '';
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                buffer += decoder.decode(value, { stream: true });
+                const lines = buffer.split(/\r?\n/);
+                buffer = lines.pop() || '';
+
+                for (const line of lines) {
+                    const trimmed = line.trim();
+                    if (!trimmed.startsWith('data:')) continue;
+                    const data = trimmed.slice(5).trim();
+                    if (!data || data === '[DONE]') continue;
+
+                    try {
+                        const json = JSON.parse(data);
+                        const content = json.choices?.[0]?.delta?.content || json.choices?.[0]?.message?.content || '';
+                        if (content) {
+                            assistantMessage.content += content;
+                            assistantMessage.pending = false;
+                            renderWebChatMessages();
+                        }
+                    } catch (_) {}
+                }
+            }
+        }
+
+        async function sendWebChatMessage() {
+            const model = document.getElementById('chatModel').value;
+            const input = document.getElementById('chatInput');
+            const sendBtn = document.getElementById('chatSendBtn');
+            const stream = document.getElementById('chatStream').checked;
+            const message = input.value.trim();
+
+            if (!message) {
+                input.focus();
+                return;
+            }
+            if (!model) {
+                alert('请选择聊天模型');
+                return;
+            }
+
+            if (webChatController) {
+                webChatController.abort();
+            }
+
+            webChatMessages.push({ role: 'user', content: message });
+            const requestMessages = getWebChatRequestMessages();
+            const assistantMessage = { role: 'assistant', content: '', pending: true };
+            webChatMessages.push(assistantMessage);
+            input.value = '';
+            sendBtn.disabled = true;
+            sendBtn.textContent = '发送中...';
+            renderWebChatMessages();
+
+            try {
+                webChatController = new AbortController();
+                const response = await fetchAdmin('/admin-api/chat/completions', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        model,
+                        messages: requestMessages,
+                        stream
+                    }),
+                    signal: webChatController.signal
+                });
+
+                if (!response.ok) {
+                    throw new Error(await getResponseErrorMessage(response));
+                }
+
+                if (stream) {
+                    if (!response.body) {
+                        throw new Error('当前浏览器不支持流式读取响应');
+                    }
+                    await readChatStream(response, assistantMessage);
+                    assistantMessage.pending = false;
+                    if (!assistantMessage.content) {
+                        assistantMessage.content = '没有返回内容';
+                    }
+                } else {
+                    const result = await response.json();
+                    assistantMessage.content = extractChatContent(result) || '没有返回内容';
+                    assistantMessage.pending = false;
+                }
+            } catch (error) {
+                if (error.name !== 'AbortError') {
+                    assistantMessage.pending = false;
+                    assistantMessage.error = true;
+                    assistantMessage.content = `请求出错: ${error.message}`;
+                }
+            } finally {
+                webChatController = null;
+                sendBtn.disabled = false;
+                sendBtn.textContent = '发送';
+                renderWebChatMessages();
+                input.focus();
             }
         }
 
