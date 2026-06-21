@@ -96,27 +96,30 @@ func ChatCompletionsHandler(c *gin.Context) {
 	if maxAttempts > sessionCount {
 		maxAttempts = sessionCount
 	}
+	attemptedIndices := make(map[int]bool, maxAttempts)
 
 	// Attempt with retry mechanism
-	for scannedSessions := 0; scannedSessions < sessionCount && attemptedSessions < maxAttempts; scannedSessions++ {
-		index := (startIndex + scannedSessions) % sessionCount
-		if cooldownUntil, coolingDown := config.ConfigInstance.GetSessionCooldownByIndex(index, time.Now()); coolingDown {
-			lastError = fmt.Sprintf("session S%d is cooling down until %s after rate limit", index+1, formatChinaTime(cooldownUntil))
-			logger.Info(fmt.Sprintf("Skipping session %d due to rate limit cooldown until %s", index+1, formatChinaTime(cooldownUntil)))
-			continue
+	for attemptedSessions < maxAttempts {
+		acquired := config.ConfigInstance.AcquireSessionLease(startIndex, attemptedIndices, time.Now())
+		if !acquired.OK {
+			lastError = acquired.Reason
+			if !acquired.EarliestCooldown.IsZero() {
+				if acquired.EarliestSource == config.CooldownSourceOfficial {
+					lastError = fmt.Sprintf("%s; earliest Claude official reset at: %s 中国时间", lastError, formatChinaTime(acquired.EarliestCooldown))
+				} else {
+					lastError = fmt.Sprintf("%s; earliest cooldown until: %s 中国时间", lastError, formatChinaTime(acquired.EarliestCooldown))
+				}
+			}
+			logger.Info(fmt.Sprintf("No dispatchable Claude session: %s", lastError))
+			break
 		}
 
+		lease := acquired.Lease
+		index := lease.Index
+		session := lease.Session
+		attemptedIndices[index] = true
 		lastSessionIdx = index
 		attemptedSessions++
-		session, err := config.ConfigInstance.GetSessionForModel(index)
-		if err != nil {
-			logger.Error(fmt.Sprintf("Failed to get session for model %s: %v", model, err))
-			lastError = err.Error()
-			if attemptedSessions < maxAttempts {
-				logger.Info("Retrying another session")
-			}
-			continue
-		}
 
 		logger.Info(fmt.Sprintf("Using session for model %s (requested: %s): %s", model, selectedModel.RequestedModel, maskSessionKey(session.SessionKey)))
 		if attemptedSessions > 1 {
@@ -126,6 +129,7 @@ func ChatCompletionsHandler(c *gin.Context) {
 		// Initialize client and process request
 		inputTokens, outputTokens, err := handleChatRequestWithTokens(c, session, model, processor, req.Stream, selectedModel.ThinkingMode, selectedModel.EffortLevel)
 		if err == nil {
+			lease.Release()
 			logRequest(c, model, index, inputTokens, outputTokens, true, startTime, "")
 			return // Success, exit the retry loop
 		}
@@ -157,9 +161,14 @@ func ChatCompletionsHandler(c *gin.Context) {
 					maskSessionKey(session.SessionKey),
 				))
 			}
-			logger.Info("Stopping retry scan after rate limit to avoid freezing more sessions in one request")
+			lease.Release()
+			if attemptedSessions < maxAttempts {
+				logger.Info("Retrying another session after rate limit")
+				continue
+			}
 			break
 		}
+		lease.Release()
 		if !core.IsRetryableError(err) {
 			logger.Error(fmt.Sprintf("Request failed with non-retryable error on session %d: %s", index+1, lastError))
 			break
@@ -171,13 +180,8 @@ func ChatCompletionsHandler(c *gin.Context) {
 
 	statusCode := http.StatusInternalServerError
 	if attemptedSessions == 0 {
-		lastError = "all Claude sessions are cooling down after rate limits"
-		if earliestUntil, earliestSource, ok := getEarliestSessionCooldown(time.Now()); ok {
-			if earliestSource == config.CooldownSourceOfficial {
-				lastError = fmt.Sprintf("%s; earliest Claude official reset at: %s 中国时间", lastError, formatChinaTime(earliestUntil))
-			} else {
-				lastError = fmt.Sprintf("%s; earliest cooldown until: %s 中国时间", lastError, formatChinaTime(earliestUntil))
-			}
+		if lastError == "" || lastError == "request failed" {
+			lastError = "no dispatchable Claude sessions"
 		}
 		statusCode = http.StatusTooManyRequests
 		logger.Error(lastError)
@@ -196,22 +200,6 @@ func ChatCompletionsHandler(c *gin.Context) {
 	c.JSON(statusCode, ErrorResponse{
 		Error: lastError,
 	})
-}
-
-func getEarliestSessionCooldown(now time.Time) (time.Time, string, bool) {
-	earliestUntil := time.Time{}
-	earliestSource := ""
-	for i := range config.ConfigInstance.Sessions {
-		cooldownUntil, cooldownSource, coolingDown := config.ConfigInstance.GetSessionCooldownInfoByIndex(i, now)
-		if !coolingDown {
-			continue
-		}
-		if earliestUntil.IsZero() || cooldownUntil.Before(earliestUntil) {
-			earliestUntil = cooldownUntil
-			earliestSource = cooldownSource
-		}
-	}
-	return earliestUntil, earliestSource, !earliestUntil.IsZero()
 }
 
 func MirrorChatHandler(c *gin.Context) {

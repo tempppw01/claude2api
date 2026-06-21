@@ -2118,6 +2118,11 @@
             color: var(--session-red);
         }
 
+        .session-state-pill.busy {
+            background: #eef3ff;
+            color: var(--session-blue);
+        }
+
         .session-quota-row {
             display: inline-flex;
             gap: 6px;
@@ -2829,9 +2834,23 @@
                             <div class="config-row">
                                 <div class="config-label">
                                     <span class="config-label-text">内部重试次数</span>
-                                    <span class="config-label-desc">非限流错误时最多换几个 key；限流会停止本次扫描。</span>
+                                    <span class="config-label-desc">一次请求最多尝试多少个可调度 key；限流和可重试错误会换下一个。</span>
                                 </div>
                                 <input type="number" min="1" max="10" class="config-input" id="internalRetryCount" placeholder="1">
+                            </div>
+                            <div class="config-row">
+                                <div class="config-label">
+                                    <span class="config-label-text">单 Key 最大并发</span>
+                                    <span class="config-label-desc">每个 key 同时处理的请求数；建议保持 1，降低同一账号被打爆的概率。</span>
+                                </div>
+                                <input type="number" min="1" max="10" class="config-input" id="maxConcurrentPerKey" placeholder="1">
+                            </div>
+                            <div class="config-row">
+                                <div class="config-label">
+                                    <span class="config-label-text">全局最大并发</span>
+                                    <span class="config-label-desc">整个服务同时转发到 Claude 的请求数上限，超过后返回忙碌。</span>
+                                </div>
+                                <input type="number" min="1" max="1000" class="config-input" id="maxGlobalConcurrency" placeholder="20">
                             </div>
                         </div>
 
@@ -3890,6 +3909,8 @@
             document.getElementById('mirrorApiPrefix').value = currentConfig.mirror_api_prefix || '';
             document.getElementById('maxChatHistoryLength').value = currentConfig.max_chat_history_length || 10000;
             document.getElementById('internalRetryCount').value = currentConfig.internal_retry_count || 1;
+            document.getElementById('maxConcurrentPerKey').value = currentConfig.max_concurrent_per_key || 1;
+            document.getElementById('maxGlobalConcurrency').value = currentConfig.max_global_concurrency || 20;
             document.getElementById('proxyInput').value = currentConfig.proxy || '';
             document.getElementById('apiKeyInput').placeholder = currentConfig.api_key || '输入新的 API Key';
             document.getElementById('adminPasswordConfigInput').value = '';
@@ -3927,6 +3948,8 @@
                 mirror_api_prefix: document.getElementById('mirrorApiPrefix').value,
                 max_chat_history_length: parseInt(document.getElementById('maxChatHistoryLength').value, 10) || 10000,
                 internal_retry_count: parseInt(document.getElementById('internalRetryCount').value, 10) || 1,
+                max_concurrent_per_key: parseInt(document.getElementById('maxConcurrentPerKey').value, 10) || 1,
+                max_global_concurrency: parseInt(document.getElementById('maxGlobalConcurrency').value, 10) || 20,
                 proxy: document.getElementById('proxyInput').value.trim(),
                 global_prompt_override_mode: document.getElementById('globalPromptOverrideMode').value,
                 global_system_prompt_override: document.getElementById('globalSystemPromptOverride').value.trim(),
@@ -4003,9 +4026,12 @@
                 const failedRequests = Number(session.failed_requests || 0);
                 const successRate = formatSessionSuccessRate(session);
                 const recentUse = session.last_success_at || session.last_error_at || '-';
+                const inFlight = Number(session.in_flight || 0);
+                const maxConcurrent = Number(session.max_concurrent || 1);
                 const rowTitle = [
                     `状态: ${visual.label}`,
                     `说明: ${visual.compactText || visual.subtitle || '-'}`,
+                    `调度: ${formatDispatchStatus(session)} (${inFlight}/${maxConcurrent})`,
                     `Org ID: ${session.org_id || '-'}`,
                     `Cookie: ${session.cookie_preview || '-'}`,
                     session.last_error ? `最后报错: ${session.last_error}` : ''
@@ -4027,6 +4053,7 @@
                         <td>
                             <div class="session-quota-row">
                                 <span class="session-quota-pill">A:${escapeHtml(capacity.avgTokensText)}</span>
+                                <span class="session-quota-pill ${inFlight > 0 ? 'expert' : ''}">C:${escapeHtml(`${inFlight}/${maxConcurrent}`)}</span>
                                 <span class="session-quota-pill fast">F:${escapeHtml(capacity.successText)}</span>
                                 <span class="session-quota-pill expert">E:${escapeHtml(capacity.limitCycleText)}</span>
                                 <span class="session-quota-pill heavy">H:${escapeHtml(capacity.rateLimitText)}</span>
@@ -4068,7 +4095,7 @@
             const total = sessions.length;
             const cooling = sessions.filter(session => session.cooling_down === true).length;
             const blocked = sessions.filter(session => !session.cooling_down && hasActiveSessionError(session)).length;
-            const ready = Math.max(0, total - cooling - blocked);
+            const ready = sessions.filter(session => session.dispatch_available === true && !hasActiveSessionError(session)).length;
             const totalRequests = sessions.reduce((sum, session) => sum + Number(session.total_requests || 0), 0);
             const successRequests = sessions.reduce((sum, session) => sum + Number(session.success_requests || 0), 0);
             const totalTokens = sessions.reduce((sum, session) => sum + Number(session.total_tokens || 0), 0);
@@ -4117,6 +4144,25 @@
                     progress,
                     timeLabel: cooldownMeta.timeLabel,
                     timeValue: cooldownUntil || '-'
+                };
+            }
+            if (session.dispatch_available === false && isBusyDispatchStatus(session.dispatch_status)) {
+                const dispatchText = formatDispatchStatus(session);
+                const inFlight = Number(session.in_flight || 0);
+                const maxConcurrent = Number(session.max_concurrent || 1);
+                return {
+                    className: 'busy',
+                    label: '忙碌中',
+                    subtitle: dispatchText,
+                    freezeIcon: '↻',
+                    freezeTitle: dispatchText,
+                    freezeText: `当前并发 ${inFlight}/${maxConcurrent}`,
+                    freezeHint: '等待正在执行的请求结束',
+                    compactText: `${dispatchText} · ${inFlight}/${maxConcurrent}`,
+                    compactTitle: `${dispatchText}\n当前并发 ${inFlight}/${maxConcurrent}`,
+                    progress: 72,
+                    timeLabel: '当前并发',
+                    timeValue: `${inFlight}/${maxConcurrent}`
                 };
             }
             if (type && hasActiveSessionError(session)) {
@@ -4288,6 +4334,7 @@
                 ['Org ID', session.org_id || '-'],
                 ['Cookie', session.cookie_preview || '-'],
                 ['冷却来源', cooldownSourceText],
+                ['调度状态', `${formatDispatchStatus(session)} · ${Number(session.in_flight || 0)}/${Number(session.max_concurrent || 1)}`],
                 ['最后报错', session.last_error || '-'],
                 ['报错模型', session.last_error_model || '-'],
                 ['请求统计', `${Number(session.success_requests || 0)} / ${Number(session.total_requests || 0)} 成功`],
@@ -4305,9 +4352,33 @@
             `).join('');
         }
 
+        function isBusyDispatchStatus(status) {
+            return status === 'busy' || status === 'global_busy';
+        }
+
+        function formatDispatchStatus(session) {
+            const status = String(session.dispatch_status || '').trim();
+            if (session.cooling_down === true || status === 'cooling') {
+                return '冻结中';
+            }
+            if (status === 'busy') {
+                return 'Key 忙碌';
+            }
+            if (status === 'global_busy') {
+                return '全局忙碌';
+            }
+            if (status === 'missing') {
+                return '不可用';
+            }
+            return session.dispatch_available === false ? '不可调度' : '可调度';
+        }
+
         function getSessionStateClass(visual) {
             if (String(visual.className || '').includes('cooling')) {
                 return 'cooling';
+            }
+            if (String(visual.className || '').includes('busy')) {
+                return 'busy';
             }
             if (String(visual.className || '').includes('error')) {
                 return 'error';
@@ -4319,6 +4390,9 @@
             const state = getSessionStateClass(visual);
             if (state === 'cooling') {
                 return '限流';
+            }
+            if (state === 'busy') {
+                return '忙碌';
             }
             if (state === 'error') {
                 return '异常';
@@ -4351,6 +4425,7 @@
                 `Org ID: ${session.org_id || '-'}`,
                 `Cookie: ${session.cookie_preview || '-'}`,
                 `冷却: ${session.cooling_down ? `${cooldownMeta.shortLabel} ${cooldownUntil || '-'}` : '-'}`,
+                `调度: ${formatDispatchStatus(session)}，并发 ${Number(session.in_flight || 0)}/${Number(session.max_concurrent || 1)}`,
                 `最后成功: ${session.last_success_at || '-'}`,
                 `最后报错: ${session.last_error || '-'}`,
                 `报错模型: ${session.last_error_model || '-'}`,

@@ -27,6 +27,25 @@ type SessionRagen struct {
 	Mutex sync.Mutex
 }
 
+type SessionLease struct {
+	Index      int
+	Session    SessionInfo
+	SessionKey string
+	config     *Config
+	released   bool
+}
+
+type SessionAcquireResult struct {
+	Lease            SessionLease
+	OK               bool
+	Reason           string
+	EarliestCooldown time.Time
+	EarliestSource   string
+	AvailableCount   int
+	BusyCount        int
+	CoolingCount     int
+}
+
 type ModelDefinition struct {
 	PublicID             string `yaml:"publicId" json:"public_id"`
 	UpstreamID           string `yaml:"upstreamId" json:"upstream_id"`
@@ -49,6 +68,8 @@ type Config struct {
 	MaxChatHistoryLength       int                  `yaml:"maxChatHistoryLength"`
 	RetryCount                 int                  `yaml:"retryCount"`
 	InternalRetryCount         int                  `yaml:"internalRetryCount"`
+	MaxConcurrentPerKey        int                  `yaml:"maxConcurrentPerKey"`
+	MaxGlobalConcurrency       int                  `yaml:"maxGlobalConcurrency"`
 	NoRolePrefix               bool                 `yaml:"noRolePrefix"`
 	PromptDisableArtifacts     bool                 `yaml:"promptDisableArtifacts"`
 	EnableMirrorApi            bool                 `yaml:"enableMirrorApi"`
@@ -60,16 +81,21 @@ type Config struct {
 	RequestLogRetention        int                  `yaml:"requestLogRetention"`
 	SessionCooldownUntil       map[string]time.Time `yaml:"-" json:"-"`
 	SessionCooldownSource      map[string]string    `yaml:"-" json:"-"`
+	SessionInFlight            map[string]int       `yaml:"-" json:"-"`
+	SessionLastUsedAt          map[string]time.Time `yaml:"-" json:"-"`
+	GlobalInFlight             int                  `yaml:"-" json:"-"`
 	RwMutx                     sync.RWMutex         `yaml:"-"` // 不从YAML加载
 }
 
 const (
-	DefaultRequestLogRetention = 1000
-	DefaultInternalRetryCount  = 1
-	SessionRateLimitCooldown   = 6 * time.Minute
-	MinRateLimitResetWindow    = 30 * time.Second
-	CooldownSourceOfficial     = "official"
-	CooldownSourceFallback     = "fallback"
+	DefaultRequestLogRetention  = 1000
+	DefaultInternalRetryCount   = 1
+	DefaultMaxConcurrentPerKey  = 1
+	DefaultMaxGlobalConcurrency = 20
+	SessionRateLimitCooldown    = 6 * time.Minute
+	MinRateLimitResetWindow     = 30 * time.Second
+	CooldownSourceOfficial      = "official"
+	CooldownSourceFallback      = "fallback"
 )
 
 func NormalizeRequestLogRetention(value int) int {
@@ -87,6 +113,26 @@ func NormalizeInternalRetryCount(value int) int {
 	}
 	if value > 10 {
 		return 10
+	}
+	return value
+}
+
+func NormalizeMaxConcurrentPerKey(value int) int {
+	if value < 1 {
+		return DefaultMaxConcurrentPerKey
+	}
+	if value > 10 {
+		return 10
+	}
+	return value
+}
+
+func NormalizeMaxGlobalConcurrency(value int) int {
+	if value < 1 {
+		return DefaultMaxGlobalConcurrency
+	}
+	if value > 1000 {
+		return 1000
 	}
 	return value
 }
@@ -160,6 +206,203 @@ func (c *Config) ensureRuntimeStateLocked() {
 	if c.SessionCooldownSource == nil {
 		c.SessionCooldownSource = make(map[string]string)
 	}
+	if c.SessionInFlight == nil {
+		c.SessionInFlight = make(map[string]int)
+	}
+	if c.SessionLastUsedAt == nil {
+		c.SessionLastUsedAt = make(map[string]time.Time)
+	}
+	if c.GlobalInFlight < 0 {
+		c.GlobalInFlight = 0
+	}
+}
+
+func (c *Config) AcquireSessionLease(startIndex int, excluded map[int]bool, now time.Time) SessionAcquireResult {
+	if now.IsZero() {
+		now = time.Now()
+	}
+
+	c.RwMutx.Lock()
+	defer c.RwMutx.Unlock()
+	c.ensureRuntimeStateLocked()
+
+	sessionCount := len(c.Sessions)
+	if sessionCount == 0 {
+		return SessionAcquireResult{Reason: "no Claude sessions configured"}
+	}
+	if startIndex < 0 {
+		startIndex = 0
+	}
+	startIndex %= sessionCount
+
+	maxGlobal := NormalizeMaxGlobalConcurrency(c.MaxGlobalConcurrency)
+	maxPerKey := NormalizeMaxConcurrentPerKey(c.MaxConcurrentPerKey)
+	if c.GlobalInFlight >= maxGlobal {
+		return SessionAcquireResult{
+			Reason:       "all Claude sessions are busy; global concurrency limit reached",
+			BusyCount:    sessionCount,
+			CoolingCount: countCoolingSessionsLocked(c, now),
+		}
+	}
+
+	bestIndex := -1
+	bestInFlight := 0
+	bestDistance := sessionCount + 1
+	bestLastUsed := time.Time{}
+	availableCount := 0
+	busyCount := 0
+	coolingCount := 0
+	earliestCooldown := time.Time{}
+	earliestSource := ""
+
+	for offset := 0; offset < sessionCount; offset++ {
+		index := (startIndex + offset) % sessionCount
+		if excluded != nil && excluded[index] {
+			continue
+		}
+
+		session := c.Sessions[index]
+		sessionKey := strings.TrimSpace(session.SessionKey)
+		if sessionKey == "" {
+			continue
+		}
+
+		if cooldownUntil, source, coolingDown := c.getSessionCooldownInfoLocked(index, now); coolingDown {
+			coolingCount++
+			if earliestCooldown.IsZero() || cooldownUntil.Before(earliestCooldown) {
+				earliestCooldown = cooldownUntil
+				earliestSource = source
+			}
+			continue
+		}
+
+		inFlight := c.SessionInFlight[sessionKey]
+		if inFlight >= maxPerKey {
+			busyCount++
+			continue
+		}
+
+		availableCount++
+		lastUsed := c.SessionLastUsedAt[sessionKey]
+		if bestIndex < 0 ||
+			inFlight < bestInFlight ||
+			(inFlight == bestInFlight && lastUsed.Before(bestLastUsed)) ||
+			(inFlight == bestInFlight && lastUsed.Equal(bestLastUsed) && offset < bestDistance) {
+			bestIndex = index
+			bestInFlight = inFlight
+			bestDistance = offset
+			bestLastUsed = lastUsed
+		}
+	}
+
+	if bestIndex < 0 {
+		reason := "no available Claude sessions"
+		if coolingCount > 0 && busyCount == 0 {
+			reason = "all Claude sessions are cooling down after rate limits"
+		} else if busyCount > 0 && coolingCount == 0 {
+			reason = "all Claude sessions are busy"
+		} else if busyCount > 0 && coolingCount > 0 {
+			reason = "all Claude sessions are busy or cooling down"
+		}
+		return SessionAcquireResult{
+			Reason:           reason,
+			EarliestCooldown: earliestCooldown,
+			EarliestSource:   earliestSource,
+			AvailableCount:   availableCount,
+			BusyCount:        busyCount,
+			CoolingCount:     coolingCount,
+		}
+	}
+
+	session := c.Sessions[bestIndex]
+	sessionKey := strings.TrimSpace(session.SessionKey)
+	c.SessionInFlight[sessionKey]++
+	c.GlobalInFlight++
+	c.SessionLastUsedAt[sessionKey] = now
+
+	return SessionAcquireResult{
+		OK: true,
+		Lease: SessionLease{
+			Index:      bestIndex,
+			Session:    session,
+			SessionKey: sessionKey,
+			config:     c,
+		},
+		AvailableCount: availableCount,
+		BusyCount:      busyCount,
+		CoolingCount:   coolingCount,
+	}
+}
+
+func (l *SessionLease) Release() {
+	if l == nil || l.config == nil || l.released || strings.TrimSpace(l.SessionKey) == "" {
+		return
+	}
+	l.config.releaseSessionLease(l.SessionKey)
+	l.released = true
+}
+
+func (c *Config) releaseSessionLease(sessionKey string) {
+	c.RwMutx.Lock()
+	defer c.RwMutx.Unlock()
+	c.ensureRuntimeStateLocked()
+
+	if c.SessionInFlight[sessionKey] > 0 {
+		c.SessionInFlight[sessionKey]--
+	}
+	if c.SessionInFlight[sessionKey] <= 0 {
+		delete(c.SessionInFlight, sessionKey)
+	}
+	if c.GlobalInFlight > 0 {
+		c.GlobalInFlight--
+	}
+}
+
+func (c *Config) GetSessionDispatchSnapshot(idx int, now time.Time) (int, int, int, string, bool) {
+	if now.IsZero() {
+		now = time.Now()
+	}
+
+	c.RwMutx.Lock()
+	defer c.RwMutx.Unlock()
+	c.ensureRuntimeStateLocked()
+
+	if len(c.Sessions) == 0 || idx < 0 || idx >= len(c.Sessions) {
+		return 0, NormalizeMaxConcurrentPerKey(c.MaxConcurrentPerKey), NormalizeMaxGlobalConcurrency(c.MaxGlobalConcurrency), "missing", false
+	}
+	sessionKey := strings.TrimSpace(c.Sessions[idx].SessionKey)
+	inFlight := c.SessionInFlight[sessionKey]
+	maxPerKey := NormalizeMaxConcurrentPerKey(c.MaxConcurrentPerKey)
+	maxGlobal := NormalizeMaxGlobalConcurrency(c.MaxGlobalConcurrency)
+	status := "ready"
+	available := true
+	if _, _, coolingDown := c.getSessionCooldownInfoLocked(idx, now); coolingDown {
+		status = "cooling"
+		available = false
+	} else if c.GlobalInFlight >= maxGlobal {
+		status = "global_busy"
+		available = false
+	} else if inFlight >= maxPerKey {
+		status = "busy"
+		available = false
+	}
+	return inFlight, maxPerKey, maxGlobal, status, available
+}
+
+func (c *Config) GetGlobalInFlight() int {
+	c.RwMutx.RLock()
+	defer c.RwMutx.RUnlock()
+	return c.GlobalInFlight
+}
+
+func countCoolingSessionsLocked(c *Config, now time.Time) int {
+	count := 0
+	for i := range c.Sessions {
+		if _, _, coolingDown := c.getSessionCooldownInfoLocked(i, now); coolingDown {
+			count++
+		}
+	}
+	return count
 }
 
 func (c *Config) CooldownSession(sessionKey string, duration time.Duration) time.Time {
@@ -239,6 +482,10 @@ func (c *Config) GetSessionCooldownInfoByIndex(idx int, now time.Time) (time.Tim
 	c.RwMutx.Lock()
 	defer c.RwMutx.Unlock()
 
+	return c.getSessionCooldownInfoLocked(idx, now)
+}
+
+func (c *Config) getSessionCooldownInfoLocked(idx int, now time.Time) (time.Time, string, bool) {
 	if len(c.Sessions) == 0 || idx < 0 || idx >= len(c.Sessions) {
 		return time.Time{}, "", false
 	}
@@ -331,6 +578,8 @@ func loadConfigFromYAML(configPath string) (*Config, error) {
 	}
 	config.RequestLogRetention = NormalizeRequestLogRetention(config.RequestLogRetention)
 	config.InternalRetryCount = NormalizeInternalRetryCount(config.InternalRetryCount)
+	config.MaxConcurrentPerKey = NormalizeMaxConcurrentPerKey(config.MaxConcurrentPerKey)
+	config.MaxGlobalConcurrency = NormalizeMaxGlobalConcurrency(config.MaxGlobalConcurrency)
 
 	return &config, nil
 }
@@ -348,6 +597,14 @@ func loadConfigFromEnv() *Config {
 	internalRetryCount, err := strconv.Atoi(os.Getenv("INTERNAL_RETRY_COUNT"))
 	if err != nil {
 		internalRetryCount = DefaultInternalRetryCount
+	}
+	maxConcurrentPerKey, err := strconv.Atoi(os.Getenv("MAX_CONCURRENT_PER_KEY"))
+	if err != nil {
+		maxConcurrentPerKey = DefaultMaxConcurrentPerKey
+	}
+	maxGlobalConcurrency, err := strconv.Atoi(os.Getenv("MAX_GLOBAL_CONCURRENCY"))
+	if err != nil {
+		maxGlobalConcurrency = DefaultMaxGlobalConcurrency
 	}
 	retryCount, sessions := parseSessionEnv(os.Getenv("SESSIONS"))
 	adminPassword := os.Getenv("ADMIN_PASSWORD")
@@ -372,6 +629,10 @@ func loadConfigFromEnv() *Config {
 		RetryCount: retryCount,
 		// 设置内部重试次数
 		InternalRetryCount: NormalizeInternalRetryCount(internalRetryCount),
+		// 设置每个 Session 的最大并发
+		MaxConcurrentPerKey: NormalizeMaxConcurrentPerKey(maxConcurrentPerKey),
+		// 设置全局最大并发
+		MaxGlobalConcurrency: NormalizeMaxGlobalConcurrency(maxGlobalConcurrency),
 		// 设置是否使用角色前缀
 		NoRolePrefix: os.Getenv("NO_ROLE_PREFIX") == "true",
 		// 设置是否使用提示词禁用artifacts
@@ -451,6 +712,8 @@ func createDefaultConfigFile(config *Config) error {
 		"chatDelete":                 config.ChatDelete,
 		"maxChatHistoryLength":       config.MaxChatHistoryLength,
 		"internalRetryCount":         NormalizeInternalRetryCount(config.InternalRetryCount),
+		"maxConcurrentPerKey":        NormalizeMaxConcurrentPerKey(config.MaxConcurrentPerKey),
+		"maxGlobalConcurrency":       NormalizeMaxGlobalConcurrency(config.MaxGlobalConcurrency),
 		"noRolePrefix":               config.NoRolePrefix,
 		"promptDisableArtifacts":     config.PromptDisableArtifacts,
 		"enableMirrorApi":            config.EnableMirrorApi,
@@ -543,6 +806,8 @@ func init() {
 	logger.Info("Loaded config:")
 	logger.Info(fmt.Sprintf("Max Retry count: %d", ConfigInstance.RetryCount))
 	logger.Info(fmt.Sprintf("Internal Retry count: %d", ConfigInstance.InternalRetryCount))
+	logger.Info(fmt.Sprintf("Max concurrent per key: %d", NormalizeMaxConcurrentPerKey(ConfigInstance.MaxConcurrentPerKey)))
+	logger.Info(fmt.Sprintf("Max global concurrency: %d", NormalizeMaxGlobalConcurrency(ConfigInstance.MaxGlobalConcurrency)))
 	for _, session := range ConfigInstance.Sessions {
 		logger.Info(fmt.Sprintf("Session: %s, OrgID: %s", MaskSecret(session.SessionKey), MaskSecret(session.OrgID)))
 	}

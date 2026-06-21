@@ -56,6 +56,7 @@ func AdminStatusHandler(c *gin.Context) {
 			lastErrorModel = lastError.Model
 		}
 		sessionStats := statsBySession[i]
+		inFlight, maxConcurrent, maxGlobalConcurrency, dispatchStatus, dispatchAvailable := config.ConfigInstance.GetSessionDispatchSnapshot(i, now)
 		sessions = append(sessions, map[string]interface{}{
 			"index":                           i,
 			"session_key":                     maskedKey,
@@ -67,6 +68,11 @@ func AdminStatusHandler(c *gin.Context) {
 			"cooldown_until":                  cooldownUntil,
 			"cooldown_source":                 cooldownSource,
 			"cooldown_official":               cooldownSource == config.CooldownSourceOfficial,
+			"in_flight":                       inFlight,
+			"max_concurrent":                  maxConcurrent,
+			"max_global_concurrency":          maxGlobalConcurrency,
+			"dispatch_status":                 dispatchStatus,
+			"dispatch_available":              dispatchAvailable,
 			"last_success_at":                 lastSuccessAt,
 			"last_error_at":                   lastErrorAt,
 			"last_error_type":                 lastErrorType,
@@ -666,6 +672,8 @@ func getSessionOrgID(session config.SessionInfo, sessionIdx int) string {
 type UpdateConfigRequest struct {
 	MaxChatHistoryLength   *int                      `json:"max_chat_history_length"`
 	InternalRetryCount     *int                      `json:"internal_retry_count"`
+	MaxConcurrentPerKey    *int                      `json:"max_concurrent_per_key"`
+	MaxGlobalConcurrency   *int                      `json:"max_global_concurrency"`
 	ChatDelete             *bool                     `json:"chat_delete"`
 	NoRolePrefix           *bool                     `json:"no_role_prefix"`
 	PromptDisableArtifacts *bool                     `json:"prompt_disable_artifacts"`
@@ -703,6 +711,22 @@ func AdminUpdateConfigHandler(c *gin.Context) {
 			return
 		}
 		config.ConfigInstance.InternalRetryCount = config.NormalizeInternalRetryCount(*req.InternalRetryCount)
+	}
+
+	if req.MaxConcurrentPerKey != nil {
+		if *req.MaxConcurrentPerKey < 1 || *req.MaxConcurrentPerKey > 10 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Max concurrent per key must be between 1 and 10"})
+			return
+		}
+		config.ConfigInstance.MaxConcurrentPerKey = config.NormalizeMaxConcurrentPerKey(*req.MaxConcurrentPerKey)
+	}
+
+	if req.MaxGlobalConcurrency != nil {
+		if *req.MaxGlobalConcurrency < 1 || *req.MaxGlobalConcurrency > 1000 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Max global concurrency must be between 1 and 1000"})
+			return
+		}
+		config.ConfigInstance.MaxGlobalConcurrency = config.NormalizeMaxGlobalConcurrency(*req.MaxGlobalConcurrency)
 	}
 
 	if req.ChatDelete != nil {
@@ -895,6 +919,9 @@ func buildAdminConfigResponse() gin.H {
 		"chat_delete":                   config.ConfigInstance.ChatDelete,
 		"max_chat_history_length":       config.ConfigInstance.MaxChatHistoryLength,
 		"internal_retry_count":          config.NormalizeInternalRetryCount(config.ConfigInstance.InternalRetryCount),
+		"max_concurrent_per_key":        config.NormalizeMaxConcurrentPerKey(config.ConfigInstance.MaxConcurrentPerKey),
+		"max_global_concurrency":        config.NormalizeMaxGlobalConcurrency(config.ConfigInstance.MaxGlobalConcurrency),
+		"global_in_flight":              config.ConfigInstance.GetGlobalInFlight(),
 		"no_role_prefix":                config.ConfigInstance.NoRolePrefix,
 		"prompt_disable_artifacts":      config.ConfigInstance.PromptDisableArtifacts,
 		"enable_mirror_api":             config.ConfigInstance.EnableMirrorApi,
@@ -928,6 +955,8 @@ func saveConfigToYAML() error {
 		"chatDelete":                 config.ConfigInstance.ChatDelete,
 		"maxChatHistoryLength":       config.ConfigInstance.MaxChatHistoryLength,
 		"internalRetryCount":         config.NormalizeInternalRetryCount(config.ConfigInstance.InternalRetryCount),
+		"maxConcurrentPerKey":        config.NormalizeMaxConcurrentPerKey(config.ConfigInstance.MaxConcurrentPerKey),
+		"maxGlobalConcurrency":       config.NormalizeMaxGlobalConcurrency(config.ConfigInstance.MaxGlobalConcurrency),
 		"noRolePrefix":               config.ConfigInstance.NoRolePrefix,
 		"promptDisableArtifacts":     config.ConfigInstance.PromptDisableArtifacts,
 		"enableMirrorApi":            config.ConfigInstance.EnableMirrorApi,

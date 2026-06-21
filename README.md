@@ -112,6 +112,8 @@ chatDelete: true
 maxChatHistoryLength: 10000
 retryCount: 0
 internalRetryCount: 1
+maxConcurrentPerKey: 1
+maxGlobalConcurrency: 20
 requestLogRetention: 1000
 
 noRolePrefix: false
@@ -136,7 +138,9 @@ modelDefinitions: []
 | `ADDRESS` | 服务监听地址 | `0.0.0.0:8080` |
 | `APIKEY` | OpenAI 兼容接口鉴权密钥 | 空 |
 | `PROXY` | HTTP 代理地址 | 空 |
-| `INTERNAL_RETRY_COUNT` | 非限流错误的内部换 key 重试次数，范围 1-10 | `1` |
+| `INTERNAL_RETRY_COUNT` | 单次请求内部最多尝试的可调度 key 数，范围 1-10 | `1` |
+| `MAX_CONCURRENT_PER_KEY` | 单个 key 同时处理的请求数，范围 1-10 | `1` |
+| `MAX_GLOBAL_CONCURRENCY` | 全局同时转发到 Claude 的请求数，范围 1-1000 | `20` |
 | `ADMIN_PASSWORD` | 管理面板密码 | `claude2apidev` |
 | `CHAT_DELETE` | 请求完成后删除 Claude 对话 | `true` |
 | `MAX_CHAT_HISTORY_LENGTH` | 超过长度后使用文件上下文 | `10000` |
@@ -148,7 +152,9 @@ modelDefinitions: []
 
 生产环境请务必修改 `adminPassword` 和 `apiKey`。
 
-`internalRetryCount` 控制一次用户请求内部最多尝试几个未冷却 Session，默认 `1`。它只用于网络抖动、上游临时错误等非限流错误；一旦某个 Session 返回限流，项目只冻结当前 Session，并立即停止本次扫描，避免一次请求把整池 key 都打进冷却。
+`internalRetryCount` 控制一次用户请求内部最多尝试几个可调度 Session，默认 `1`。遇到网络抖动、上游临时错误或限流时，会在这个范围内继续换下一个可用 key。只有 Claude 返回可用的官方 reset 时间时，项目才会冻结当前 key；没有官方时间时只记录错误，不做估算冻结。
+
+`maxConcurrentPerKey` 和 `maxGlobalConcurrency` 控制调度并发。默认每个 key 同时只处理 1 个请求，全局最多 20 个正在转发到 Claude 的请求；超过限制的 key 会被标记为忙碌并跳过。
 
 `retryCount` 是旧配置字段，仍会保留在配置文件中用于兼容旧部署；新的请求轮询以 `internalRetryCount` 为准。
 
