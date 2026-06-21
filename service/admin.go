@@ -617,21 +617,24 @@ func runAdminOpenAITestRequest(c *gin.Context, session config.SessionInfo, sessi
 			now := time.Now()
 			if resetAt, ok := core.GetRateLimitResetAt(err); ok {
 				cooldownUntil, cooldownSource = config.ConfigInstance.CooldownSessionAfterRateLimit(session.SessionKey, resetAt, now)
-			} else {
-				cooldownUntil, cooldownSource = config.ConfigInstance.CooldownSessionAfterRateLimit(session.SessionKey, time.Time{}, now)
 			}
 			if cooldownSource == config.CooldownSourceOfficial {
 				errorMessage = fmt.Sprintf("rate limit exceeded - Claude official reset at: %s 中国时间", formatChinaTime(cooldownUntil))
+				logger.Error(fmt.Sprintf(
+					"Admin session test hit rate limit for S%d (%s); cooling down until %s (source: %s)",
+					sessionIdx+1,
+					maskSessionKey(session.SessionKey),
+					formatChinaTime(cooldownUntil),
+					cooldownSource,
+				))
 			} else {
-				errorMessage = fmt.Sprintf("rate limit exceeded - estimated cooldown until: %s 中国时间 (Claude did not return a usable future reset time)", formatChinaTime(cooldownUntil))
+				errorMessage = "rate limit exceeded - Claude did not return a usable future reset time; session was not frozen"
+				logger.Error(fmt.Sprintf(
+					"Admin session test hit rate limit for S%d (%s) without usable official reset time; not freezing session",
+					sessionIdx+1,
+					maskSessionKey(session.SessionKey),
+				))
 			}
-			logger.Error(fmt.Sprintf(
-				"Admin session test hit rate limit for S%d (%s); cooling down until %s (source: %s)",
-				sessionIdx+1,
-				maskSessionKey(session.SessionKey),
-				formatChinaTime(cooldownUntil),
-				cooldownSource,
-			))
 		}
 		logRequest(c, modelName, sessionIdx, 0, 0, false, startTime, errorMessage)
 		return adminSessionTestResult{Model: selectedModel.PublicID}, fmt.Errorf("OpenAI request test failed: %s", errorMessage)

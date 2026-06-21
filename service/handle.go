@@ -139,21 +139,24 @@ func ChatCompletionsHandler(c *gin.Context) {
 			now := time.Now()
 			if resetAt, ok := core.GetRateLimitResetAt(err); ok {
 				cooldownUntil, cooldownSource = config.ConfigInstance.CooldownSessionAfterRateLimit(session.SessionKey, resetAt, now)
-			} else {
-				cooldownUntil, cooldownSource = config.ConfigInstance.CooldownSessionAfterRateLimit(session.SessionKey, time.Time{}, now)
 			}
 			if cooldownSource == config.CooldownSourceOfficial {
 				lastError = fmt.Sprintf("rate limit exceeded - Claude official reset at: %s 中国时间", formatChinaTime(cooldownUntil))
+				logger.Error(fmt.Sprintf(
+					"Session %d (%s) hit rate limit; cooling down until %s (source: %s)",
+					index+1,
+					maskSessionKey(session.SessionKey),
+					formatChinaTime(cooldownUntil),
+					cooldownSource,
+				))
 			} else {
-				lastError = fmt.Sprintf("rate limit exceeded - estimated cooldown until: %s 中国时间 (Claude did not return a usable future reset time)", formatChinaTime(cooldownUntil))
+				lastError = "rate limit exceeded - Claude did not return a usable future reset time; session was not frozen"
+				logger.Error(fmt.Sprintf(
+					"Session %d (%s) hit rate limit without usable official reset time; not freezing session",
+					index+1,
+					maskSessionKey(session.SessionKey),
+				))
 			}
-			logger.Error(fmt.Sprintf(
-				"Session %d (%s) hit rate limit; cooling down until %s (source: %s)",
-				index+1,
-				maskSessionKey(session.SessionKey),
-				formatChinaTime(cooldownUntil),
-				cooldownSource,
-			))
 			logger.Info("Stopping retry scan after rate limit to avoid freezing more sessions in one request")
 			break
 		}
@@ -173,7 +176,7 @@ func ChatCompletionsHandler(c *gin.Context) {
 			if earliestSource == config.CooldownSourceOfficial {
 				lastError = fmt.Sprintf("%s; earliest Claude official reset at: %s 中国时间", lastError, formatChinaTime(earliestUntil))
 			} else {
-				lastError = fmt.Sprintf("%s; earliest estimated cooldown until: %s 中国时间", lastError, formatChinaTime(earliestUntil))
+				lastError = fmt.Sprintf("%s; earliest cooldown until: %s 中国时间", lastError, formatChinaTime(earliestUntil))
 			}
 		}
 		statusCode = http.StatusTooManyRequests

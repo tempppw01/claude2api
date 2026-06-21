@@ -209,7 +209,7 @@ func (c *Config) CooldownSessionAfterRateLimit(sessionKey string, resetAt time.T
 	if !resetAt.IsZero() && resetAt.After(now.Add(MinRateLimitResetWindow)) {
 		return c.setSessionCooldownUntil(sessionKey, resetAt, CooldownSourceOfficial)
 	}
-	return c.setSessionCooldownUntil(sessionKey, now.Add(SessionRateLimitCooldown), CooldownSourceFallback)
+	return time.Time{}, ""
 }
 
 func (c *Config) ClearSessionCooldown(sessionKey string) {

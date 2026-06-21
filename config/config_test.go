@@ -36,7 +36,7 @@ func TestCooldownSessionUntilUsesOfficialResetTime(t *testing.T) {
 	}
 }
 
-func TestCooldownSessionAfterRateLimitFallsBackForStaleResetTime(t *testing.T) {
+func TestCooldownSessionAfterRateLimitIgnoresStaleResetTime(t *testing.T) {
 	cfg := &Config{
 		Sessions: []SessionInfo{
 			{SessionKey: "sk-test"},
@@ -45,23 +45,37 @@ func TestCooldownSessionAfterRateLimitFallsBackForStaleResetTime(t *testing.T) {
 	now := time.Date(2026, 6, 20, 19, 22, 55, 0, time.Local)
 
 	cooldownUntil, cooldownSource := cfg.CooldownSessionAfterRateLimit("sk-test", now, now)
-	expected := now.Add(SessionRateLimitCooldown)
-	if !cooldownUntil.Equal(expected) {
-		t.Fatalf("expected fallback cooldown until %s, got %s", expected, cooldownUntil)
+	if !cooldownUntil.IsZero() {
+		t.Fatalf("expected no cooldown for stale reset time, got %s", cooldownUntil)
 	}
-	if cooldownSource != CooldownSourceFallback {
-		t.Fatalf("expected fallback cooldown source, got %s", cooldownSource)
+	if cooldownSource != "" {
+		t.Fatalf("expected empty cooldown source, got %s", cooldownSource)
 	}
 
 	gotUntil, gotSource, coolingDown := cfg.GetSessionCooldownInfoByIndex(0, now.Add(time.Minute))
-	if !coolingDown {
-		t.Fatal("expected stale reset fallback to keep session cooling down")
+	if coolingDown {
+		t.Fatalf("expected stale reset time not to freeze session, got until %s source %s", gotUntil, gotSource)
 	}
-	if !gotUntil.Equal(expected) {
-		t.Fatalf("expected stored fallback cooldown until %s, got %s", expected, gotUntil)
+}
+
+func TestCooldownSessionAfterRateLimitDoesNotFreezeWithoutResetTime(t *testing.T) {
+	cfg := &Config{
+		Sessions: []SessionInfo{
+			{SessionKey: "sk-test"},
+		},
 	}
-	if gotSource != CooldownSourceFallback {
-		t.Fatalf("expected stored fallback cooldown source, got %s", gotSource)
+	now := time.Date(2026, 6, 20, 19, 22, 55, 0, time.Local)
+
+	cooldownUntil, cooldownSource := cfg.CooldownSessionAfterRateLimit("sk-test", time.Time{}, now)
+	if !cooldownUntil.IsZero() {
+		t.Fatalf("expected no cooldown without official reset time, got %s", cooldownUntil)
+	}
+	if cooldownSource != "" {
+		t.Fatalf("expected empty cooldown source, got %s", cooldownSource)
+	}
+
+	if gotUntil, gotSource, coolingDown := cfg.GetSessionCooldownInfoByIndex(0, now.Add(time.Minute)); coolingDown {
+		t.Fatalf("expected missing reset time not to freeze session, got until %s source %s", gotUntil, gotSource)
 	}
 }
 
